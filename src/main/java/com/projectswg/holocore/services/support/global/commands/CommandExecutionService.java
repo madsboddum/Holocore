@@ -4,6 +4,7 @@ import com.projectswg.holocore.intents.support.global.command.ExecuteCommandInte
 import com.projectswg.holocore.resources.support.data.server_info.loader.DataLoader;
 import com.projectswg.holocore.resources.support.global.commands.Command;
 import com.projectswg.holocore.resources.support.global.commands.ICmdCallback;
+import com.projectswg.holocore.resources.support.global.commands.StartMusicCallback;
 import com.projectswg.holocore.resources.support.global.commands.callbacks.*;
 import com.projectswg.holocore.resources.support.global.commands.callbacks.admin.*;
 import com.projectswg.holocore.resources.support.global.commands.callbacks.admin.qatool.CmdQaTool;
@@ -76,6 +77,7 @@ public class CommandExecutionService extends Service {
 		registerCallback("findFriend", FindFriendCallback::new);
 
 		registerCallback("startDance", StartDanceCallback::new);
+		registerCallback("startMusic", StartMusicCallback::new);
 		registerCallback("requestBiography", RequestBiographyCmdCallback::new);
 		registerCallback("flourish", FlourishCmdCallback::new);
 		registerCallback("changeDance", ChangeDanceCallback::new);

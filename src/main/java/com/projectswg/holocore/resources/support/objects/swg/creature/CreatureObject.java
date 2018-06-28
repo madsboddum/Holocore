@@ -641,6 +641,15 @@ CreatureObject extends TangibleObject {
 		creo6.setEquippedWeapon(equippedWeapon.getObjectId());
 		sendDelta(6, 12, equippedWeapon.getObjectId());
 	}
+	
+	public void setEquippedInstrument(@NotNull String instrumentTemplate) {
+		creo6.setEquippedInstrument(instrumentTemplate);
+		sendDelta(6, 10, instrumentTemplate, StringType.ASCII);
+	}
+	
+	public String getEquippedInstrument() {
+		return creo6.getEquippedInstrument();
+	}
 
 	public byte getMoodId() {
 		return creo6.getMoodId();

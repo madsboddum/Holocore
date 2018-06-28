@@ -33,11 +33,13 @@ import com.projectswg.common.data.location.Location;
 import com.projectswg.common.network.packets.swg.zone.object_controller.Animation;
 import com.projectswg.holocore.intents.gameplay.entertainment.dance.DanceIntent;
 import com.projectswg.holocore.intents.gameplay.entertainment.dance.FlourishIntent;
+import com.projectswg.holocore.intents.gameplay.entertainment.dance.MusicIntent;
 import com.projectswg.holocore.intents.gameplay.entertainment.dance.WatchIntent;
 import com.projectswg.holocore.intents.gameplay.player.experience.ExperienceIntent;
 import com.projectswg.holocore.intents.support.global.chat.SystemMessageIntent;
 import com.projectswg.holocore.intents.support.global.zone.PlayerEventIntent;
 import com.projectswg.holocore.intents.support.global.zone.PlayerTransformedIntent;
+import com.projectswg.holocore.resources.gameplay.entertainment.InstrumentMapper;
 import com.projectswg.holocore.resources.support.data.server_info.StandardLog;
 import com.projectswg.holocore.resources.support.data.server_info.loader.DataLoader;
 import com.projectswg.holocore.resources.support.data.server_info.loader.PerformanceLoader.PerformanceInfo;
@@ -48,10 +50,7 @@ import me.joshlarson.jlcommon.control.IntentHandler;
 import me.joshlarson.jlcommon.control.Service;
 import me.joshlarson.jlcommon.log.Log;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
@@ -90,7 +89,7 @@ public class EntertainmentService extends Service {
 			// If we're changing dance, allow them to do so
 			boolean changeDance = di.isChangeDance();
 			
-			if (!changeDance && dancer.isPerforming()) {
+			if (!changeDance && isDancing(dancer)) {
 				new SystemMessageIntent(dancer.getOwner(), "@performance:already_performing_self").broadcast();
 			} else if (DataLoader.Companion.performances().getPerformanceByName(danceName) != null) {
 				// The dance name is valid.
@@ -111,7 +110,38 @@ public class EntertainmentService extends Service {
 			}
 		} else {
 			// This intent wants the creature to stop dancing
-			stopDancing(dancer);
+			stopPerforming(dancer);
+		}
+	}
+	
+	@IntentHandler
+	private void handleMusicIntent(MusicIntent mi) {
+		CreatureObject musician = mi.getMusician();
+		Player musicianOwner = musician.getOwner();
+		String performanceName = mi.getPerformanceName();
+		String commandName = "startMusic+".concat(performanceName);
+		PerformanceInfo performanceByName = DataLoader.Companion.performances().getPerformanceByName(performanceName);
+		String instrumentTemplate = mi.getInstrumentTemplate();
+		InstrumentMapper instrumentMapper = new InstrumentMapper();
+		String instrumentName = instrumentMapper.getInstrumentByTemplate(instrumentTemplate);
+		
+		if (performanceByName == null) {
+			// If the song name/performance name is not supported
+			new SystemMessageIntent(musicianOwner, "@performance:music_invalid_song").broadcast();
+		} else if (!musician.hasCommand(commandName)) {
+			// If the character does not have this skill to play this song
+			new SystemMessageIntent(musicianOwner, "@performance:music_lack_skill_song_self").broadcast();
+		} else if (!DataLoader.Companion.performances().isInstrumentSupported(performanceName, instrumentName)) {
+			// If that song cannot be played with the characters current instrument
+			new SystemMessageIntent(musicianOwner, "@performance:music_must_unequip");	// TODO not working..?
+		} else if (performerMap.containsKey(mi.getMusician().getObjectId())) {
+			// If the performer is already playing, let them know
+			new SystemMessageIntent(musicianOwner, "@performance:already_performing_self").broadcast();
+		} else if (!musician.getCommands().contains(instrumentName)) {
+			// If the performer does not have the skill for the instrument
+			new SystemMessageIntent(musicianOwner, "@performance:music_lack_skill_instrument").broadcast();
+		} else {
+			startPlaying(musician, performanceName);
 		}
 	}
 	
@@ -132,8 +162,14 @@ public class EntertainmentService extends Service {
 				break;
 			case PE_ZONE_IN_SERVER:
 				// We need to check if they're dancing in order to start giving them XP
-				if (isEntertainer(creature) && creature.getPosture().equals(Posture.SKILL_ANIMATING)) {
-					scheduleExperienceTask(creature, DataLoader.Companion.performances().getPerformanceByDanceId(Integer.parseInt(creature.getAnimation().replace("dance_", ""))).getPerformanceName());
+				if (isEntertainer(creature)) {
+					if (isDancing(creature)) {
+						scheduleExperienceTask(creature, DataLoader.Companion.performances().getPerformanceByDanceId(Integer.parseInt(creature.getAnimation().replace("dance_", ""))).getPerformanceName());
+					}
+					
+					if (isPlaying(creature)) {
+						// TODO
+					}
 				}
 				
 				break;
@@ -297,28 +333,55 @@ public class EntertainmentService extends Service {
 		new SystemMessageIntent(dancer.getOwner(), "@performance:dance_start_self").broadcast();
 	}
 	
-	private void stopDancing(CreatureObject dancer) {
-		if (dancer.isPerforming()) {
-			dancer.setPerforming(false);
-			dancer.setPosture(Posture.UPRIGHT);
-			dancer.setPerformanceCounter(0);
-			dancer.setAnimation("");
-			
-			// Non-entertainers don't receive XP and have no audience - ignore them
-			if (isEntertainer(dancer)) {
-				cancelExperienceTask(dancer);
-				performerMap.remove(dancer.getObjectId()).clearSpectators();
+	private void stopPerforming(CreatureObject performer) {
+		if (performer.isPerforming()) {
+			if (isPlaying(performer)) {
+				performer.setPerformanceId(0);
+				performer.setPerformanceListenTarget(0);
+				new SystemMessageIntent(performer.getOwner(), "@performance:music_stop_self").broadcast();
+			} else {
+				new SystemMessageIntent(performer.getOwner(), "@performance:dance_stop_self").broadcast();
 			}
 			
-			new SystemMessageIntent(dancer.getOwner(), "@performance:dance_stop_self").broadcast();
+			performer.setPerforming(false);
+			performer.setPosture(Posture.UPRIGHT);
+			performer.setPerformanceCounter(0);
+			performer.setAnimation("");
+			
+			// Non-entertainers don't receive XP and have no audience - ignore them
+			if (isEntertainer(performer)) {
+				cancelExperienceTask(performer);
+				performerMap.remove(performer.getObjectId()).clearSpectators();
+			}
 		} else {
-			new SystemMessageIntent(dancer.getOwner(), "@performance:dance_not_performing").broadcast();
+			new SystemMessageIntent(performer.getOwner(), "@performance:dance_not_performing").broadcast();	// TODO generic message possible?
 		}
 	}
 	
 	private void changeDance(CreatureObject dancer, String newPerformanceName) {
 		performerMap.get(dancer.getObjectId()).setPerformanceName(newPerformanceName);
 		dancer.setAnimation("dance_" + DataLoader.Companion.performances().getPerformanceByName(newPerformanceName).getPerformanceName());
+	}
+	
+	private boolean isDancing(CreatureObject creature) {
+		return creature.isPerforming() && creature.getPerformanceId() == 0;
+	}
+	
+	
+	private boolean isPlaying(CreatureObject creature) {
+		return creature.isPerforming() && creature.getPerformanceId() > 0;
+	}
+	
+	private void startPlaying(CreatureObject musician, String songName) {
+		musician.setAnimation("music_3");	// TODO music_1 = bandfill, music_3 = horns...
+		musician.setPerformanceId(1);    // TODO this is the ID of the song we're playing. 1=starwars1, 2=rock...
+		musician.setPerformanceCounter(0);
+		musician.setPerforming(true);
+		musician.setPosture(Posture.SKILL_ANIMATING);
+		musician.setPerformanceListenTarget(musician.getObjectId());	// Musicians should hear themselves playing
+		
+		scheduleExperienceTask(musician, songName);
+		new SystemMessageIntent(musician.getOwner(), "@performance:music_start_self").broadcast();
 	}
 	
 	private void startWatching(CreatureObject actor, CreatureObject creature) {

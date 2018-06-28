@@ -35,17 +35,18 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public final class PerformanceLoader extends DataLoader {
 	
 	private final Map<String, PerformanceInfo> nameMap;
 	private final Map<Integer, PerformanceInfo> danceMap;
+	private final Map<String, Collection<String>> supportedInstrumentsForSong;
 	
 	PerformanceLoader() {
 		this.nameMap = new HashMap<>();
 		this.danceMap = new HashMap<>();
+		this.supportedInstrumentsForSong = new HashMap<>();
 	}
 	
 	@Nullable
@@ -58,6 +59,12 @@ public final class PerformanceLoader extends DataLoader {
 		return danceMap.get(danceVisualId);
 	}
 	
+	public boolean isInstrumentSupported(String performanceName, String instrumentName) {
+		Collection<String> supportedInstruments = supportedInstrumentsForSong.getOrDefault(performanceName, Collections.emptyList());
+		
+		return supportedInstruments.contains(instrumentName);
+	}
+	
 	@Override
 	public final void load() throws IOException {
 		try (SdbResultSet set = SdbLoader.load(new File("serverdata/nge/performance/performance.sdb"))) {
@@ -66,6 +73,9 @@ public final class PerformanceLoader extends DataLoader {
 				PerformanceInfo performance = new PerformanceInfo(set, flourishes);
 				nameMap.put(performance.getPerformanceName(), performance);
 				danceMap.put(performance.getDanceVisualId(), performance);
+				
+				Collection<String> supportedInstruments = supportedInstrumentsForSong.computeIfAbsent(performance.getPerformanceName(), k -> new HashSet<>());
+				supportedInstruments.add(performance.getRequiredInstrument());
 			}
 		}
 	}

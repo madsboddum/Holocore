@@ -72,6 +72,7 @@ public class TransferItemCallback implements ICmdCallback {
 		GameObjectType targetGameObjectType = target.getGameObjectType();
 		SWGObject oldContainer = target.getParent();
 		boolean weapon = target instanceof WeaponObject;
+		boolean instrument = target.getGameObjectType() == GameObjectType.GOT_MISC_INSTRUMENT;
 
 		try {
 			SWGObject newContainer = ObjectLookup.getObjectById(Long.valueOf(args.split(" ")[1]));
@@ -174,6 +175,8 @@ public class TransferItemCallback implements ICmdCallback {
 				case SUCCESS:
 					if (weapon) {
 						changeWeapon(actor, target, equip);
+					} else if (instrument) {
+						changeInstrument(actor, target.getTemplate(), equip);
 					}
 					
 					applyEffect(actor, target, equip);
@@ -244,6 +247,14 @@ public class TransferItemCallback implements ICmdCallback {
 			actor.setEquippedWeapon(null);
 		}
 		actor.sendSelf(new PlayMusicMessage(0, "sound/pl_all_draw_item.snd", 1, false));
+	}
+	
+	private static void changeInstrument(CreatureObject actor, String instrumentTemplate, boolean equip) {
+		if (equip) {
+			actor.setEquippedInstrument(instrumentTemplate);
+		} else {
+			actor.setEquippedInstrument("");
+		}
 	}
 	
 	private static void applyEffect(CreatureObject actor, SWGObject target, boolean equip) {

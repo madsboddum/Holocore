@@ -69,6 +69,7 @@ class CreatureObjectSharedNP implements Persistable, MongoPersistable {
 	private byte	moodId					= 0;
 	private int 	performanceCounter		= 0;
 	private int 	performanceId			= 0;
+	private String  equippedInstrument      = "";
 	private String 	costume					= "";
 	private boolean visible					= true;
 	private boolean performing				= false;
@@ -204,6 +205,14 @@ class CreatureObjectSharedNP implements Persistable, MongoPersistable {
 	
 	public void setPerformanceId(int performanceId) {
 		this.performanceId = performanceId;
+	}
+	
+	public String getEquippedInstrument() {
+		return equippedInstrument;
+	}
+	
+	public void setEquippedInstrument(String equippedInstrument) {
+		this.equippedInstrument = equippedInstrument;
 	}
 	
 	public int getGuildId() {
@@ -524,6 +533,7 @@ class CreatureObjectSharedNP implements Persistable, MongoPersistable {
 		data.putDocument("attributes", attributes);
 		data.putDocument("maxAttributes", maxAttributes);
 		data.putMap("buffs", buffs);
+		data.putString("equippedInstrument", equippedInstrument);
 	}
 	
 	@Override
@@ -548,6 +558,7 @@ class CreatureObjectSharedNP implements Persistable, MongoPersistable {
 		data.getDocument("attributes", attributes);
 		data.getDocument("maxAttributes", maxAttributes);
 		buffs.putAll(data.getMap("buffs", CRC.class, Buff.class));
+		equippedInstrument = data.getString("equippedInstrument", equippedInstrument);
 	}
 	
 	@Override
