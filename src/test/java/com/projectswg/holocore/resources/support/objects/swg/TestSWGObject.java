@@ -214,4 +214,31 @@ public class TestSWGObject extends TestRunnerNoIntents {
 		Assert.assertEquals("Ring 3 should have been equipped", parent, ring3.getParent());
 		Assert.assertNotEquals("Ring 1 should have been unequipped", ring1.getParent(), parent);
 	}
+	
+	@Test
+	public void testReplaceItemInAppearanceContainer() {
+		SWGObject parent = new GenericCreatureObject(1);
+		
+		// Create an item we can equip to appearance
+		SWGObject hat1 = new GenericTangibleObject(2);
+		hat1.setArrangement(List.of(List.of("hat")));
+		
+		// Create another one we can equip to appearance
+		SWGObject hat2 = new GenericTangibleObject(3);
+		hat2.setArrangement(List.of(List.of("hat")));
+		
+		SWGObject inventory = parent.getSlottedObject("inventory");
+		
+		// Add the hats to the inventory of the player
+		hat1.moveToContainer(inventory);
+		hat2.moveToContainer(inventory);
+		
+		SWGObject appearanceInventory = parent.getSlottedObject("appearance_inventory");
+		
+		hat1.moveToContainer(appearanceInventory);	// Equip hat1 as appearance item
+		hat2.moveToContainer(appearanceInventory);	// Replace hat1 with hat2 as appearance item
+		
+		
+		Assert.assertEquals("Replaced appearance item should be moved to inventory", inventory, hat1.getParent());
+	}
 }
