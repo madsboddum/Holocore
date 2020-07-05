@@ -1,15 +1,7 @@
 package com.projectswg.holocore.resources.support.data.server_info.loader
 
 import com.projectswg.holocore.resources.support.data.server_info.loader.npc.*
-import me.joshlarson.jlcommon.log.Log
 import java.io.IOException
-import java.lang.ref.Reference
-import java.lang.ref.SoftReference
-import java.lang.ref.WeakReference
-import java.util.concurrent.ConcurrentHashMap
-import java.util.function.Function
-import java.util.function.Supplier
-import kotlin.reflect.KProperty
 
 abstract class DataLoader {
 	
@@ -61,7 +53,7 @@ abstract class DataLoader {
 		fun terrainLevels(): TerrainLevelLoader = ServerData.terrainLevels
 		fun noSpawnZones(): NoSpawnZoneLoader = ServerData.noSpawnZones
 		fun gcwRegionLoader(): GcwRegionLoader = ServerData.gcwRegionLoader
-
+		fun destructionMissionLoader(): DestructionMissionLoader = ServerData.destructionMissionLoader
 	}
 	
 }

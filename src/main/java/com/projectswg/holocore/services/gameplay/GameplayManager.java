@@ -6,6 +6,7 @@ import com.projectswg.holocore.services.gameplay.entertainment.EntertainmentMana
 import com.projectswg.holocore.services.gameplay.faction.FactionManager;
 import com.projectswg.holocore.services.gameplay.gcw.GalacticCivilWarManager;
 import com.projectswg.holocore.services.gameplay.jedi.JediManager;
+import com.projectswg.holocore.services.gameplay.mission.MissionManager;
 import com.projectswg.holocore.services.gameplay.player.PlayerManager;
 import com.projectswg.holocore.services.gameplay.structures.StructuresManager;
 import com.projectswg.holocore.services.gameplay.world.WorldManager;
@@ -19,6 +20,7 @@ import me.joshlarson.jlcommon.control.ManagerStructure;
 		FactionManager.class,
 		GalacticCivilWarManager.class,
 		JediManager.class,
+		MissionManager.class,
 		PlayerManager.class,
 		StructuresManager.class,
 		WorldManager.class

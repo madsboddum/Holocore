@@ -97,6 +97,7 @@ object ServerData {
 	val terrainLevels		by SoftDataLoaderDelegate(::TerrainLevelLoader)
 	val noSpawnZones		by SoftDataLoaderDelegate(::NoSpawnZoneLoader)
 	val gcwRegionLoader		by SoftDataLoaderDelegate(::GcwRegionLoader)
+	val destructionMissionLoader	by SoftDataLoaderDelegate(::DestructionMissionLoader)
 
 	private class WeakDataLoaderDelegate<T: DataLoader>(loaderCreator: () -> T): DataLoaderDelegate<T>(::WeakReference, loaderCreator)
 	private class SoftDataLoaderDelegate<T: DataLoader>(loaderCreator: () -> T): DataLoaderDelegate<T>(::SoftReference, loaderCreator)

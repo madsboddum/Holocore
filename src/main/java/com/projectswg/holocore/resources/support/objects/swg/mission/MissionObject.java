@@ -32,6 +32,7 @@ import com.projectswg.common.data.encodables.oob.waypoint.WaypointPackage;
 import com.projectswg.common.data.location.Point3D;
 import com.projectswg.common.data.location.Terrain;
 import com.projectswg.common.encoding.Encodable;
+import com.projectswg.common.encoding.StringType;
 import com.projectswg.common.network.NetBuffer;
 import com.projectswg.common.network.NetBufferStream;
 import com.projectswg.common.network.packets.swg.zone.baselines.Baseline.BaselineType;
@@ -63,18 +64,19 @@ public class MissionObject extends IntangibleObject {
 	@Override
 	public void createBaseline3(Player target, BaselineBuilder bb) {
 		super.createBaseline3(target, bb);
-		bb.addInt(difficulty);
-		bb.addObject(location);
-		bb.addUnicode(missionCreator);
-		bb.addInt(reward);
-		bb.addObject(startLocation);
-		bb.addObject(targetAppearance);
-		bb.addObject(description);
-		bb.addObject(title);
-		bb.addInt(status);
-		bb.addObject(missionType);
-		bb.addAscii(targetName);
-		bb.addObject(waypoint.getOOB());
+		bb.addInt(difficulty);	// 5
+		bb.addObject(location);	// 6
+		bb.addUnicode(missionCreator);	// 7
+		bb.addInt(reward);	// 8
+		bb.addObject(startLocation);	// 9
+		bb.addObject(targetAppearance);	// 10
+		bb.addObject(description);	// 11
+		bb.addObject(title);	// 12
+		bb.addInt(status);	// 13
+		bb.addObject(missionType);	// 14
+		bb.addAscii(targetName);	// 15
+		bb.addObject(waypoint.getOOB());	// 16
+		bb.incrementOperandCount(12);
 	}
 	
 	@Override
@@ -98,7 +100,14 @@ public class MissionObject extends IntangibleObject {
 		buffer.position(pos);
 		waypoint.setOOB(new WaypointPackage(buffer));
 	}
-	
+
+	@Override
+	protected void createBaseline6(Player target, BaselineBuilder bb) {
+		super.createBaseline6(target, bb);
+		bb.addInt(0);	// TODO unsure what this should be, but the NGE client crashes without it.
+		bb.incrementOperandCount(1);
+	}
+
 	@Override
 	public void save(NetBufferStream stream) {
 		super.save(stream);
@@ -183,7 +192,134 @@ public class MissionObject extends IntangibleObject {
 			location.read(stream);
 			terrain = Terrain.valueOf(stream.getAscii());
 		}
-		
+
+		public Point3D getLocation() {
+			return location;
+		}
+
+		public void setLocation(Point3D location) {
+			this.location = location;
+		}
+
+		public long getObjectId() {
+			return objectId;
+		}
+
+		public Terrain getTerrain() {
+			return terrain;
+		}
+
+		public void setTerrain(Terrain terrain) {
+			this.terrain = terrain;
+		}
+	}
+
+	public int getDifficulty() {
+		return difficulty;
+	}
+
+	public void setDifficulty(int difficulty) {
+		this.difficulty = difficulty;
+		sendDelta(3, 5, difficulty);
+	}
+
+	public MissionLocation getMissionLocation() {
+		return location;
+	}
+
+	public void setMissionLocation(MissionLocation location) {
+		this.location = location;
+		sendDelta(3, 6, location);
+	}
+
+	public String getMissionCreator() {
+		return missionCreator;
+	}
+
+	public void setMissionCreator(String missionCreator) {
+		this.missionCreator = missionCreator;
+		sendDelta(3, 7, missionCreator, StringType.UNICODE);
+	}
+
+	public int getReward() {
+		return reward;
+	}
+
+	public void setReward(int reward) {
+		this.reward = reward;
+		sendDelta(3, 8, reward);
+	}
+
+	public MissionLocation getStartMissionLocation() {
+		return startLocation;
+	}
+
+	public void setStartMissionLocation(MissionLocation startLocation) {
+		this.startLocation = startLocation;
+		sendDelta(3, 9, startLocation);
+	}
+
+	public CRC getTargetAppearance() {
+		return targetAppearance;
+	}
+
+	public void setTargetAppearance(CRC targetAppearance) {
+		this.targetAppearance = targetAppearance;
+		sendDelta(3, 10, targetAppearance);
+	}
+
+	public StringId getDescription() {
+		return description;
+	}
+
+	public void setDescription(StringId description) {
+		this.description = description;
+		sendDelta(3, 11, description);
+	}
+
+	public StringId getTitle() {
+		return title;
+	}
+
+	public void setTitle(StringId title) {
+		this.title = title;
+		sendDelta(3, 12, title);
+	}
+
+	public int getStatus() {
+		return status;
+	}
+
+	public void setStatus(int status) {
+		this.status = status;
+		sendDelta(3, 13, status);
+	}
+
+	public CRC getMissionType() {
+		return missionType;
+	}
+
+	public void setMissionType(CRC missionType) {
+		this.missionType = missionType;
+		sendDelta(3, 14, missionType);
+	}
+
+	public String getTargetName() {
+		return targetName;
+	}
+
+	public void setTargetName(String targetName) {
+		this.targetName = targetName;
+		sendDelta(3, 15, targetName, StringType.ASCII);
+	}
+
+	public WaypointObject getWaypoint() {
+		return waypoint;
+	}
+
+	public void setWaypoint(WaypointObject waypoint) {
+		this.waypoint = waypoint;
+		sendDelta(3, 16, waypoint.getOOB());
 	}
 	
 }

@@ -1,0 +1,8 @@
+id	terrain	creator	title	description	target	template
+INTEGER	TEXT	text	TEXT	TEXT	TEXT	TEXT
+1	TATOOINE	Elza Monimi	@mission/mission_destroy_neutral_easy_npc_tatooine:m1t	@mission/mission_destroy_neutral_easy_npc_tatooine:m1d	Test Target	object/tangible/lair/base/shared_objective_power_node.iff
+2	TATOOINE	Outraged Citizens	@mission/mission_destroy_neutral_easy_npc_tatooine:m2t	@mission/mission_destroy_neutral_easy_npc_tatooine:m2d	Test Target	object/tangible/lair/base/shared_objective_power_node.iff
+3	TATOOINE	A local scavenger needs someone to make his stomping grounds safe.	@mission/mission_destroy_neutral_easy_npc_tatooine:m3t	@mission/mission_destroy_neutral_easy_npc_tatooine:m3d	Test Target	object/tangible/lair/base/shared_objective_power_node.iff
+4	TATOOINE	A Group of Wronged Sightseers	@mission/mission_destroy_neutral_easy_npc_tatooine:m4t	@mission/mission_destroy_neutral_easy_npc_tatooine:m4d	Test Target	object/tangible/lair/base/shared_objective_power_node.iff
+5	TATOOINE	Tatooine Coalition for the Preservation of the Prominent Past	@mission/mission_destroy_neutral_easy_npc_tatooine:m5t	@mission/mission_destroy_neutral_easy_npc_tatooine:m5d	Test Target	object/tangible/lair/base/shared_objective_power_node.iff
+6	TATOOINE	A Community In Peril	@mission/mission_destroy_neutral_easy_npc_tatooine:m6t	@mission/mission_destroy_neutral_easy_npc_tatooine:m6d	Test Target	object/tangible/lair/base/shared_objective_power_node.iff
