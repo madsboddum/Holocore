@@ -12,6 +12,12 @@
 			"args": {
 				"animation": "dismiss"
 			}
+		},
+		{
+			"type": "grant_quest",
+			"args": {
+				"quest": "quest/purvis_kill_zealots"
+			}
 		}
 	]
 }

@@ -1,0 +1,25 @@
+{
+	"npcMessage": {
+		"file": "conversation/tatooine_espa_watto",
+		"key": "s_400",
+		"comment": "What are you looking for outlander?"
+	},
+	"playerResponses": [],
+	"requirements": [
+		{
+			"type": "active_quest",
+			"args": {
+				"quest": "quest/purvis_kill_warriors",
+				"task": 3
+			}
+		}
+	],
+	"events": [
+		{
+			"type": "advance_quest",
+			"args": {
+				"quest": "quest/purvis_kill_warriors"
+			}
+		}
+	]
+}
