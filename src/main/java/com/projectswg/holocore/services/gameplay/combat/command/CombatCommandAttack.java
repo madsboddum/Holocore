@@ -51,7 +51,6 @@ import com.projectswg.holocore.resources.support.global.commands.Locomotion;
 import com.projectswg.holocore.resources.support.objects.swg.SWGObject;
 import com.projectswg.holocore.resources.support.objects.swg.creature.CreatureObject;
 import com.projectswg.holocore.resources.support.objects.swg.creature.CreatureState;
-import com.projectswg.holocore.resources.support.objects.swg.tangible.Protection;
 import com.projectswg.holocore.resources.support.objects.swg.tangible.TangibleObject;
 import com.projectswg.holocore.resources.support.objects.swg.weapon.WeaponClass;
 import com.projectswg.holocore.resources.support.objects.swg.weapon.WeaponObject;
@@ -64,7 +63,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
@@ -73,9 +71,6 @@ import static com.projectswg.holocore.services.gameplay.combat.command.CombatCom
 
 enum CombatCommandAttack implements CombatCommandHitType {
 	INSTANCE;
-
-	private static final String jediArmorSkillMod = "jedi_armor";
-	private static final String tkaArmorSkillMod = "tka_armor";
 
 	@Override
 	public CombatStatus handle(@NotNull CreatureObject source, @Nullable SWGObject target, @NotNull Command command, @NotNull CombatCommand combatCommand, @NotNull String arguments) {
@@ -272,13 +267,9 @@ enum CombatCommandAttack implements CombatCommandHitType {
 		}
 
 		// The armor of the target will mitigate some damage
-		if (isWearingPhysicalArmor(creatureTarget)) {
-			physicalArmorMitigate(info, damageType, creatureTarget, combatCommand);
-		} else if (hasInnateJediArmor(creatureTarget)) {
-			innateJediArmorMitigate(info, creatureTarget);
-		} else if (hasInnateTerasKasiArmor(creatureTarget)) {
-			innateTerasKasiArmorMitigate(info, creatureTarget);
-		}
+		ArmorSelector armorSelector = ArmorSelector.INSTANCE;
+		Armor armor = armorSelector.select(creatureTarget);
+		armor.mitigateDamage(info, damageType, creatureTarget, combatCommand);
 
 		// End rolls
 		int targetHealth = creatureTarget.getHealth();
@@ -324,35 +315,7 @@ enum CombatCommandAttack implements CombatCommandHitType {
 		return weaponDamage + addedDamage;
 	}
 
-	private static void innateJediArmorMitigate(AttackInfo info, CreatureObject target) {
-		innateArmorMitigate(info, target, jediArmorSkillMod);
-	}
 
-	private static void innateTerasKasiArmorMitigate(AttackInfo info, CreatureObject target) {
-		innateArmorMitigate(info, target, tkaArmorSkillMod);
-	}
-
-	private static boolean hasInnateTerasKasiArmor(CreatureObject target) {
-		return target.getSkillModValue(tkaArmorSkillMod) > 0;
-	}
-
-	private static boolean hasInnateJediArmor(CreatureObject target) {
-		return target.getSkillModValue(jediArmorSkillMod) > 0;
-	}
-
-	private static boolean isWearingPhysicalArmor(CreatureObject target) {
-		Collection<SWGObject> slottedObjects = target.getSlottedObjects();
-
-		for (SWGObject slottedObject : slottedObjects) {
-			if (slottedObject instanceof TangibleObject tangibleSlottedObject) {
-				if (tangibleSlottedObject.getProtection() != null) {
-					return true;
-				}
-			}
-		}
-
-		return false;
-	}
 
 	private static void riposte(CreatureObject source, CreatureObject target, int rawDamage, double percentOfDamageToReflectBackToAttacker) {
 		int reflectedDamage = (int) (percentOfDamageToReflectBackToAttacker * rawDamage);
@@ -515,75 +478,6 @@ enum CombatCommandAttack implements CombatCommandHitType {
 		}
 	}
 
-	private static void physicalArmorMitigate(AttackInfo info, DamageType damageType, CreatureObject target, CombatCommand command) {
-		// Armor mitigation
-		int armor = getArmor(damageType, target);
-		float armorReduction = getArmorReduction(armor, command);
-		int currentDamage = info.getFinalDamage();
-		int armorAbsorbed = (int) (currentDamage * armorReduction);
-		currentDamage -= armorAbsorbed;
-
-		info.setArmor(armor);    // Assumed to be the amount of armor points the defender has against the primary damage type
-		info.setBlockedDamage(armorAbsorbed);    // Describes how many points of damage the armor absorbed
-
-		info.setFinalDamage(currentDamage);
-	}
-
-	private static void innateArmorMitigate(AttackInfo info, CreatureObject target, String skillMod) {
-		float damageReduction = target.getSkillModValue(skillMod) / 100f;
-		damageReduction -= getArmorBreakPercent(target);
-		int currentDamage = info.getFinalDamage();
-		int armorAbsorbed = (int) (currentDamage * damageReduction);
-		currentDamage -= armorAbsorbed;
-
-		info.setFinalDamage(currentDamage);
-	}
-
-	private static int getArmor(DamageType damageType, CreatureObject creature) {
-		int armProtection = 7;
-		Map<String, Integer> protectionMap = Map.of("chest2", 35, "pants1", 20, "hat", 14, "bracer_upper_l", armProtection, "bracer_upper_r", armProtection, "bicep_l", armProtection, "bicep_r", armProtection, "utility_belt", 3);
-
-		double armor = 0;
-
-		for (Map.Entry<String, Integer> entry : protectionMap.entrySet()) {
-			String slot = entry.getKey();
-			TangibleObject slottedObject = (TangibleObject) creature.getSlottedObject(slot);
-
-			if (slottedObject != null) {
-				Protection protection = slottedObject.getProtection();
-
-				if (protection != null) {
-					int protectionFromArmorPiece = switch (damageType) {
-						case KINETIC -> protection.getKinetic();
-						case ENERGY -> protection.getEnergy();
-						case ELEMENTAL_HEAT -> protection.getHeat();
-						case ELEMENTAL_COLD -> protection.getCold();
-						case ELEMENTAL_ACID -> protection.getAcid();
-						case ELEMENTAL_ELECTRICAL -> protection.getElectricity();
-						default -> 0;
-					};
-
-					Integer value = entry.getValue();
-
-					armor += protectionFromArmorPiece * (value / 100d);
-				}
-			}
-		}
-
-		double armorBreakPercent = getArmorBreakPercent(creature);
-
-		if (armorBreakPercent > 0) {
-			armor *= (1 - armorBreakPercent / 100d);
-		}
-
-		return (int) armor;
-	}
-
-	private static double getArmorBreakPercent(CreatureObject creature) {
-		int privateArmorBreak = creature.getSkillModValue("private_armor_break");
-		return privateArmorBreak / 10d;
-	}
-
 	/**
 	 * @param command to get the damage type of
 	 * @param weapon  fallback in case the combat command does not provide its own {@code DamageType}
@@ -591,20 +485,6 @@ enum CombatCommandAttack implements CombatCommandHitType {
 	 */
 	private static DamageType getDamageType(CombatCommand command, WeaponObject weapon) {
 		return command.getPercentAddFromWeapon() > 0 ? weapon.getDamageType() : command.getElementalType();
-	}
-
-	private static float getArmorReduction(int baseArmor, CombatCommand command) {
-		double commandBypassArmor = command.getBypassArmor();
-
-		if (commandBypassArmor > 0) {
-			// This command bypasses armor
-			baseArmor *= 1.0 - commandBypassArmor;
-		}
-
-		float mitigation = (float) (90 * (1 - Math.exp(-0.000125 * baseArmor))) + baseArmor / 9000f;
-
-		return mitigation / 100;
-
 	}
 
 }
