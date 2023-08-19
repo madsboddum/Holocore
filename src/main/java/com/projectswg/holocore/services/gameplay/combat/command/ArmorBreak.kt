@@ -24,14 +24,13 @@
  * You should have received a copy of the GNU Affero General Public License        *
  * along with Holocore.  If not, see <http://www.gnu.org/licenses/>.               *
  ***********************************************************************************/
-package com.projectswg.holocore.services.gameplay.combat.command;
+package com.projectswg.holocore.services.gameplay.combat.command
 
-import com.projectswg.holocore.resources.support.objects.swg.creature.CreatureObject;
+import com.projectswg.holocore.resources.support.objects.swg.creature.CreatureObject
 
-class ArmorBreak {
-
-	static double getArmorBreakPercent(CreatureObject creature) {
-		int privateArmorBreak = creature.getSkillModValue("private_armor_break");
-		return privateArmorBreak / 10d;
+internal object ArmorBreak {
+	fun getArmorBreakPercent(creature: CreatureObject): Double {
+		val privateArmorBreak = creature.getSkillModValue("private_armor_break")
+		return privateArmorBreak / 10.0
 	}
 }

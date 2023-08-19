@@ -24,13 +24,7 @@
  * You should have received a copy of the GNU Affero General Public License        *
  * along with Holocore.  If not, see <http://www.gnu.org/licenses/>.               *
  ***********************************************************************************/
-package com.projectswg.holocore.services.gameplay.combat.command;
+package com.projectswg.holocore.services.gameplay.combat.command
 
-class InnateJediArmor extends InnateArmor {
-
-	public static final String jediArmorSkillMod = "jedi_armor";
-
-	protected InnateJediArmor() {
-		super(jediArmorSkillMod);
-	}
-}
+const val jediArmorSkillMod = "jedi_armor"
+internal object InnateJediArmor : InnateArmor(jediArmorSkillMod)

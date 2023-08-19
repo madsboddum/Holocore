@@ -24,13 +24,7 @@
  * You should have received a copy of the GNU Affero General Public License        *
  * along with Holocore.  If not, see <http://www.gnu.org/licenses/>.               *
  ***********************************************************************************/
-package com.projectswg.holocore.services.gameplay.combat.command;
+package com.projectswg.holocore.services.gameplay.combat.command
 
-class InnateTerasKasiArmor extends InnateArmor {
-
-	public static final String tkaArmorSkillMod = "tka_armor";
-
-	protected InnateTerasKasiArmor() {
-		super(tkaArmorSkillMod);
-	}
-}
+const val tkaArmorSkillMod = "tka_armor"
+internal object InnateTerasKasiArmor : InnateArmor(tkaArmorSkillMod)

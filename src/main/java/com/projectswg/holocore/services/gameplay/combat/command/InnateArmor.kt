@@ -24,27 +24,21 @@
  * You should have received a copy of the GNU Affero General Public License        *
  * along with Holocore.  If not, see <http://www.gnu.org/licenses/>.               *
  ***********************************************************************************/
-package com.projectswg.holocore.services.gameplay.combat.command;
+package com.projectswg.holocore.services.gameplay.combat.command
 
-import com.projectswg.common.data.combat.AttackInfo;
-import com.projectswg.common.data.combat.DamageType;
-import com.projectswg.holocore.resources.support.global.commands.CombatCommand;
-import com.projectswg.holocore.resources.support.objects.swg.creature.CreatureObject;
+import com.projectswg.common.data.combat.AttackInfo
+import com.projectswg.common.data.combat.DamageType
+import com.projectswg.holocore.resources.support.global.commands.CombatCommand
+import com.projectswg.holocore.resources.support.objects.swg.creature.CreatureObject
+import com.projectswg.holocore.services.gameplay.combat.command.ArmorBreak.getArmorBreakPercent
 
-abstract class InnateArmor implements Armor {
-
-	private final String skillMod;
-
-	protected InnateArmor(String skillMod) {this.skillMod = skillMod;}
-
-	@Override
-	public void mitigateDamage(AttackInfo info, DamageType damageType, CreatureObject target, CombatCommand command) {
-		float damageReduction = target.getSkillModValue(skillMod) / 100f;
-		damageReduction -= ArmorBreak.getArmorBreakPercent(target);
-		int currentDamage = info.getFinalDamage();
-		int armorAbsorbed = (int) (currentDamage * damageReduction);
-		currentDamage -= armorAbsorbed;
-
-		info.setFinalDamage(currentDamage);
+internal abstract class InnateArmor protected constructor(private val skillMod: String) : Armor {
+	override fun mitigateDamage(info: AttackInfo, damageType: DamageType, target: CreatureObject, command: CombatCommand) {
+		var damageReduction = target.getSkillModValue(skillMod) / 100f
+		damageReduction -= getArmorBreakPercent(target).toFloat()
+		var currentDamage = info.finalDamage
+		val armorAbsorbed = (currentDamage * damageReduction).toInt()
+		currentDamage -= armorAbsorbed
+		info.finalDamage = currentDamage
 	}
 }

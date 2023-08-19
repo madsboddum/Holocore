@@ -32,7 +32,7 @@ import com.projectswg.holocore.resources.support.global.commands.CombatCommand
 import com.projectswg.holocore.resources.support.objects.swg.creature.CreatureObject
 
 object NoArmor : Armor {
-	override fun mitigateDamage(info: AttackInfo?, damageType: DamageType?, target: CreatureObject?, command: CombatCommand?) {
+	override fun mitigateDamage(info: AttackInfo, damageType: DamageType, target: CreatureObject, command: CombatCommand) {
 		// Do nothing
 	}
 }

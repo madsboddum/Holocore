@@ -24,84 +24,75 @@
  * You should have received a copy of the GNU Affero General Public License        *
  * along with Holocore.  If not, see <http://www.gnu.org/licenses/>.               *
  ***********************************************************************************/
-package com.projectswg.holocore.services.gameplay.combat.command;
+package com.projectswg.holocore.services.gameplay.combat.command
 
-import com.projectswg.common.data.combat.AttackInfo;
-import com.projectswg.common.data.combat.DamageType;
-import com.projectswg.holocore.resources.support.global.commands.CombatCommand;
-import com.projectswg.holocore.resources.support.objects.swg.creature.CreatureObject;
-import com.projectswg.holocore.resources.support.objects.swg.tangible.Protection;
-import com.projectswg.holocore.resources.support.objects.swg.tangible.TangibleObject;
+import com.projectswg.common.data.combat.AttackInfo
+import com.projectswg.common.data.combat.DamageType
+import com.projectswg.holocore.resources.support.global.commands.CombatCommand
+import com.projectswg.holocore.resources.support.objects.swg.creature.CreatureObject
+import com.projectswg.holocore.resources.support.objects.swg.tangible.TangibleObject
+import com.projectswg.holocore.services.gameplay.combat.command.ArmorBreak.getArmorBreakPercent
+import kotlin.math.exp
 
-import java.util.Map;
-
-class PhysicalArmor implements Armor {
-
-	public void mitigateDamage(AttackInfo info, DamageType damageType, CreatureObject target, CombatCommand command) {
+internal object PhysicalArmor : Armor {
+	override fun mitigateDamage(info: AttackInfo, damageType: DamageType, target: CreatureObject, command: CombatCommand) {
 		// Armor mitigation
-		int armor = getArmor(damageType, target);
-		float armorReduction = getArmorReduction(armor, command);
-		int currentDamage = info.getFinalDamage();
-		int armorAbsorbed = (int) (currentDamage * armorReduction);
-		currentDamage -= armorAbsorbed;
-
-		info.setArmor(armor);    // Assumed to be the amount of armor points the defender has against the primary damage type
-		info.setBlockedDamage(armorAbsorbed);    // Describes how many points of damage the armor absorbed
-
-		info.setFinalDamage(currentDamage);
+		val armor = getArmor(damageType, target)
+		val armorReduction = getArmorReduction(armor, command)
+		var currentDamage = info.finalDamage
+		val armorAbsorbed = (currentDamage * armorReduction).toInt()
+		currentDamage -= armorAbsorbed
+		info.armor = armor.toLong() // Assumed to be the amount of armor points the defender has against the primary damage type
+		info.blockedDamage = armorAbsorbed // Describes how many points of damage the armor absorbed
+		info.finalDamage = currentDamage
 	}
 
-	private static int getArmor(DamageType damageType, CreatureObject creature) {
-		int armProtection = 7;
-		Map<String, Integer> protectionMap = Map.of("chest2", 35, "pants1", 20, "hat", 14, "bracer_upper_l", armProtection, "bracer_upper_r", armProtection, "bicep_l", armProtection, "bicep_r", armProtection, "utility_belt", 3);
-
-		double armor = 0;
-
-		for (Map.Entry<String, Integer> entry : protectionMap.entrySet()) {
-			String slot = entry.getKey();
-			TangibleObject slottedObject = (TangibleObject) creature.getSlottedObject(slot);
-
+	private fun getArmor(damageType: DamageType, creature: CreatureObject): Int {
+		val armProtection = 7
+		val protectionMap = mapOf(
+			"chest2" to 35,
+			"pants1" to 20,
+			"hat" to 14,
+			"bracer_upper_l" to armProtection,
+			"bracer_upper_r" to armProtection,
+			"bicep_l" to armProtection,
+			"bicep_r" to armProtection,
+			"utility_belt" to 3,
+		)
+		var armor = 0.0
+		for ((slot, value) in protectionMap) {
+			val slottedObject = creature.getSlottedObject(slot) as TangibleObject?
 			if (slottedObject != null) {
-				Protection protection = slottedObject.getProtection();
-
+				val protection = slottedObject.protection
 				if (protection != null) {
-					int protectionFromArmorPiece = switch (damageType) {
-						case KINETIC -> protection.getKinetic();
-						case ENERGY -> protection.getEnergy();
-						case ELEMENTAL_HEAT -> protection.getHeat();
-						case ELEMENTAL_COLD -> protection.getCold();
-						case ELEMENTAL_ACID -> protection.getAcid();
-						case ELEMENTAL_ELECTRICAL -> protection.getElectricity();
-						default -> 0;
-					};
-
-					Integer value = entry.getValue();
-
-					armor += protectionFromArmorPiece * (value / 100d);
+					val protectionFromArmorPiece = when (damageType) {
+						DamageType.KINETIC              -> protection.kinetic
+						DamageType.ENERGY               -> protection.energy
+						DamageType.ELEMENTAL_HEAT       -> protection.heat
+						DamageType.ELEMENTAL_COLD       -> protection.cold
+						DamageType.ELEMENTAL_ACID       -> protection.acid
+						DamageType.ELEMENTAL_ELECTRICAL -> protection.electricity
+						else                            -> 0
+					}
+					armor += protectionFromArmorPiece * (value / 100.0)
 				}
 			}
 		}
-
-		double armorBreakPercent = ArmorBreak.getArmorBreakPercent(creature);
-
+		val armorBreakPercent = getArmorBreakPercent(creature)
 		if (armorBreakPercent > 0) {
-			armor *= (1 - armorBreakPercent / 100d);
+			armor *= 1 - armorBreakPercent / 100.0
 		}
-
-		return (int) armor;
+		return armor.toInt()
 	}
 
-	private static float getArmorReduction(int baseArmor, CombatCommand command) {
-		double commandBypassArmor = command.getBypassArmor();
-
+	private fun getArmorReduction(baseArmor: Int, command: CombatCommand): Float {
+		var effectiveArmor = baseArmor
+		val commandBypassArmor = command.bypassArmor
 		if (commandBypassArmor > 0) {
 			// This command bypasses armor
-			baseArmor *= 1.0 - commandBypassArmor;
+			effectiveArmor = (effectiveArmor * (1.0 - commandBypassArmor)).toInt()
 		}
-
-		float mitigation = (float) (90 * (1 - Math.exp(-0.000125 * baseArmor))) + baseArmor / 9000f;
-
-		return mitigation / 100;
-
+		val mitigation = (90 * (1 - exp(-0.000125 * effectiveArmor))).toFloat() + effectiveArmor / 9000f
+		return mitigation / 100
 	}
 }

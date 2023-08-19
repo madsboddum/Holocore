@@ -24,13 +24,13 @@
  * You should have received a copy of the GNU Affero General Public License        *
  * along with Holocore.  If not, see <http://www.gnu.org/licenses/>.               *
  ***********************************************************************************/
-package com.projectswg.holocore.services.gameplay.combat.command;
+package com.projectswg.holocore.services.gameplay.combat.command
 
-import com.projectswg.common.data.combat.AttackInfo;
-import com.projectswg.common.data.combat.DamageType;
-import com.projectswg.holocore.resources.support.global.commands.CombatCommand;
-import com.projectswg.holocore.resources.support.objects.swg.creature.CreatureObject;
+import com.projectswg.common.data.combat.AttackInfo
+import com.projectswg.common.data.combat.DamageType
+import com.projectswg.holocore.resources.support.global.commands.CombatCommand
+import com.projectswg.holocore.resources.support.objects.swg.creature.CreatureObject
 
-public interface Armor {
-	void mitigateDamage(AttackInfo info, DamageType damageType, CreatureObject target, CombatCommand command);
+interface Armor {
+	fun mitigateDamage(info: AttackInfo, damageType: DamageType, target: CreatureObject, command: CombatCommand)
 }

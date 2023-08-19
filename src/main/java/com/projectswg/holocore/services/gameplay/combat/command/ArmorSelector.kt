@@ -32,9 +32,9 @@ import com.projectswg.holocore.resources.support.objects.swg.tangible.TangibleOb
 
 object ArmorSelector {
 	fun select(creatureObject: CreatureObject): Armor {
-		return if (isWearingPhysicalArmor(creatureObject)) PhysicalArmor()
-		else if (hasInnateJediArmor(creatureObject)) InnateJediArmor()
-		else if (hasInnateTerasKasiArmor(creatureObject)) InnateTerasKasiArmor()
+		return if (isWearingPhysicalArmor(creatureObject)) PhysicalArmor
+		else if (hasInnateJediArmor(creatureObject)) InnateJediArmor
+		else if (hasInnateTerasKasiArmor(creatureObject)) InnateTerasKasiArmor
 		else NoArmor
 	}
 
@@ -51,10 +51,10 @@ object ArmorSelector {
 	}
 
 	private fun hasInnateJediArmor(target: CreatureObject): Boolean {
-		return target.getSkillModValue(InnateJediArmor.jediArmorSkillMod) > 0
+		return target.getSkillModValue(jediArmorSkillMod) > 0
 	}
 
 	private fun hasInnateTerasKasiArmor(target: CreatureObject): Boolean {
-		return target.getSkillModValue(InnateTerasKasiArmor.tkaArmorSkillMod) > 0
+		return target.getSkillModValue(tkaArmorSkillMod) > 0
 	}
 }
