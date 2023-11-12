@@ -83,6 +83,9 @@ dependencies {
 	testImplementation(group="org.junit.jupiter", name="junit-jupiter-params", version= junit5Version)
 	testImplementation(group="org.testcontainers", name="mongodb", version="1.18.0")
 	testRuntimeOnly(group="org.slf4j", name="slf4j-simple", version="1.7.36")
+	val kotestVersion = "5.8.0"
+	testImplementation(group="io.kotest", name="kotest-runner-junit5", version= kotestVersion)
+	testImplementation(group="io.kotest", name="kotest-assertions-core", version= kotestVersion)
 
 	testImplementation("com.tngtech.archunit:archunit-junit5:1.0.1")
 }
