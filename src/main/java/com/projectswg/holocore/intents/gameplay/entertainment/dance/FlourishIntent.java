@@ -1,5 +1,5 @@
 /***********************************************************************************
- * Copyright (c) 2018 /// Project SWG /// www.projectswg.com                       *
+ * Copyright (c) 2024 /// Project SWG /// www.projectswg.com                       *
  *                                                                                 *
  * ProjectSWG is the first NGE emulator for Star Wars Galaxies founded on          *
  * July 7th, 2011 after SOE announced the official shutdown of Star Wars Galaxies. *
@@ -32,19 +32,19 @@ import me.joshlarson.jlcommon.control.Intent;
 public class FlourishIntent extends Intent {
 	
 	private final Player performer;
-	private final String flourishName;
+	private final int flourishNumber;
 	
-	public FlourishIntent(Player performer, String flourishName) {
+	public FlourishIntent(Player performer, int flourishNumber) {
 		this.performer = performer;
-		this.flourishName = flourishName;
+		this.flourishNumber = flourishNumber;
 	}
 	
 	public Player getPerformer() {
 		return performer;
 	}
 	
-	public String getFlourishName() {
-		return flourishName;
+	public int getFlourishNumber() {
+		return flourishNumber;
 	}
 	
 }

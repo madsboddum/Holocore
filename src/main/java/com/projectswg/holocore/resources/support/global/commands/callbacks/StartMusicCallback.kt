@@ -24,52 +24,23 @@
  * You should have received a copy of the GNU Affero General Public License        *
  * along with Holocore.  If not, see <http://www.gnu.org/licenses/>.               *
  ***********************************************************************************/
-package com.projectswg.holocore.resources.support.global.commands.callbacks;
+package com.projectswg.holocore.resources.support.global.commands.callbacks
 
-import com.projectswg.common.data.encodables.tangible.Posture;
-import com.projectswg.holocore.intents.gameplay.crafting.survey.StopSamplingIntent;
-import com.projectswg.holocore.intents.gameplay.entertainment.dance.DanceIntent;
-import com.projectswg.holocore.intents.gameplay.entertainment.dance.StopMusicIntent;
-import com.projectswg.holocore.resources.support.global.commands.ICmdCallback;
-import com.projectswg.holocore.resources.support.global.commands.Locomotion;
-import com.projectswg.holocore.resources.support.global.player.Player;
-import com.projectswg.holocore.resources.support.objects.swg.SWGObject;
-import com.projectswg.holocore.resources.support.objects.swg.creature.CreatureObject;
-import com.projectswg.holocore.resources.support.objects.swg.creature.CreatureState;
-import org.jetbrains.annotations.NotNull;
+import com.projectswg.holocore.intents.gameplay.entertainment.dance.ChangeMusicIntent
+import com.projectswg.holocore.intents.gameplay.entertainment.dance.StartMusicIntent
+import com.projectswg.holocore.intents.gameplay.entertainment.dance.StopMusicIntent
+import com.projectswg.holocore.resources.support.global.player.Player
 
-public class StandCmdCallback implements ICmdCallback {
-	
-	@Override
-	public void execute(@NotNull Player player, SWGObject target, @NotNull String args) {
-		CreatureObject creature = player.getCreatureObject();
-		
-		if (Locomotion.KNOCKED_DOWN.isActive(creature)) {
-			return;
-		}
-		
-		if (creature.isStatesBitmask(CreatureState.RIDING_MOUNT)) {
-			return;
-		}
-		
-		if (creature.isPerforming()) {
-			// Ziggy: When you move while dancing, the client wants to execute /stand instead of /stopDance. Blame SOE.
-			if (creature.getPerformanceId() > 0) {
-				new StopMusicIntent(player).broadcast();
-			} else {
-				new DanceIntent(player).broadcast();
-			}
-		} else {
-			creature.clearStatesBitmask(CreatureState.SITTING_ON_CHAIR);
-			creature.setPosture(Posture.UPRIGHT);
-			creature.setMovementPercent(1);
-			creature.setTurnScale(1);
-			StopSamplingIntent.broadcast(creature);
-		}
-		
-		if ("meditating".equals(creature.getMoodAnimation())) {
-			creature.setMoodAnimation("neutral");
-		}
+class StartMusicCallback : StartPerformanceCallback("startMusic+", ListBoxText("@performance:select_song", "@performance:available_songs")) {
+	override fun onSelectPerformance(player: Player, selection: String) {
+		StartMusicIntent(player, selection).broadcast()
 	}
-	
+
+	override fun onStopPerformance(player: Player) {
+		StopMusicIntent(player).broadcast()
+	}
+
+	override fun onChangePerformance(player: Player, selection: String) {
+		ChangeMusicIntent(player, selection).broadcast()
+	}
 }

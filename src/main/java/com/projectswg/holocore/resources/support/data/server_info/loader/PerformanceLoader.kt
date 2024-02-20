@@ -34,30 +34,51 @@ import java.io.File
 import java.io.IOException
 
 class PerformanceLoader internal constructor() : DataLoader() {
-	private val nameMap = mutableMapOf<String, PerformanceInfo>()
-	private val danceMap = mutableMapOf<Int, PerformanceInfo>()
+	private val danceNameMap = mutableMapOf<String, PerformanceInfo>()
+	private val danceIdMap = mutableMapOf<Int, PerformanceInfo>()
+	private val songMap = mutableMapOf<String, MutableMap<String, PerformanceInfo>>()
 
-	fun getPerformanceByName(performanceName: String): PerformanceInfo? {
-		return nameMap[performanceName]
+	fun getDancePerformanceByName(performanceName: String): PerformanceInfo? {
+		return danceNameMap[performanceName]
 	}
 
 	fun getPerformanceByDanceId(danceVisualId: Int): PerformanceInfo? {
-		return danceMap[danceVisualId]
+		return danceIdMap[danceVisualId]
+	}
+	
+	fun getMusicPerformanceBySongAndInstrument(song: String, instrument: String): PerformanceInfo? {
+		return songMap[song]?.get(instrument)
 	}
 
 	@Throws(IOException::class)
 	override fun load() {
+		val musicType = CRC("music")
+		val danceType = CRC("dance")
+		
 		SdbLoader.load(File("serverdata/performance/performance.sdb")).use { set ->
-			val flourishes = set.getTextArrayParser("flourish(%d+)", null)
+			val flourishes = set.getTextArrayParser("flourish([1-8]+)", null)
+			var index = 1
 			while (set.next()) {
-				val performance = PerformanceInfo(set, flourishes)
-				nameMap[performance.performanceName] = performance
-				danceMap[performance.danceVisualId] = performance
+				val performance = PerformanceInfo(set, flourishes, index)
+				
+				when (val type = performance.type) {
+					musicType -> {
+						songMap.computeIfAbsent(performance.performanceName) { mutableMapOf() }[performance.requiredInstrument] = performance
+					}
+					danceType -> {
+						danceNameMap[performance.performanceName] = performance
+						danceIdMap[performance.danceVisualId] = performance
+					}
+					else -> {
+						throw IllegalArgumentException("Unknown performance type: $type")
+					}
+				}
+				index++
 			}
 		}
 	}
 
-	class PerformanceInfo(set: SdbResultSet, flourishes: SdbTextColumnArraySet) {
+	class PerformanceInfo(set: SdbResultSet, flourishes: SdbTextColumnArraySet, val index: Int) {
 		val performanceName: String = set.getText("performance_name")
 		val instrumentAudioId: Int = set.getInt("instrument_audio_id").toInt()
 		val requiredSong: String = set.getText("required_song")
@@ -74,7 +95,7 @@ class PerformanceLoader internal constructor() : DataLoader() {
 		val requiredSkillMod: String = set.getText("required_skill_mod")
 		val requiredSkillModValue: Int = set.getInt("required_skill_mod_value").toInt()
 		val mainloop: String = set.getText("mainloop")
-		val flourishes = flourishes.getArray(set).toList()
+		val flourishes = flourishes.getArray(set).filterNotNull().toList()
 		val intro: String = set.getText("intro")
 		val outro: String = set.getText("outro")
 	}

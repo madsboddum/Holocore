@@ -1,5 +1,5 @@
 /***********************************************************************************
- * Copyright (c) 2018 /// Project SWG /// www.projectswg.com                       *
+ * Copyright (c) 2024 /// Project SWG /// www.projectswg.com                       *
  *                                                                                 *
  * ProjectSWG is the first NGE emulator for Star Wars Galaxies founded on          *
  * July 7th, 2011 after SOE announced the official shutdown of Star Wars Galaxies. *
@@ -50,13 +50,12 @@ public class FlourishCmdCallback implements ICmdCallback  {
 		try {
 			int flourishNumber = Integer.parseInt(args);
 
-			if(flourishNumber < 1 || flourishNumber > 9) {
+			if(flourishNumber < 1 || flourishNumber > 8) {
 				new SystemMessageIntent(player, "@performance:flourish_not_valid").broadcast();
-			} else if(flourishNumber == 9) {
-				new FlourishIntent(player, "mistake").broadcast();
-			} else {
-				new FlourishIntent(player, "skill_action_" + flourishNumber).broadcast();
+				return;
 			}
+
+			new FlourishIntent(player, flourishNumber).broadcast();
 		} catch (NumberFormatException e) {
 			new SystemMessageIntent(player, "@performance:flourish_not_valid").broadcast();
 		}
