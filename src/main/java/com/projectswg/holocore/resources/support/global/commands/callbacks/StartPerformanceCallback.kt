@@ -40,7 +40,7 @@ abstract class StartPerformanceCallback(private val abilityNamePrefix: String, p
 		if (args.isEmpty()) {// TODO check if this is some kind of insanity flow we have implemented ourselves or if it's a client thing
 			displayPerformanceSelectionWindow(creatureObject, player)
 		} else {
-			onStopPerformance(player)
+			onSelectPerformance(player, args)
 		}
 	}
 
