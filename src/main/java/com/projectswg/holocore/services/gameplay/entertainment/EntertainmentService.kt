@@ -31,8 +31,10 @@ import com.projectswg.common.data.encodables.oob.ProsePackage
 import com.projectswg.common.data.encodables.oob.StringId
 import com.projectswg.common.data.encodables.tangible.Posture
 import com.projectswg.common.data.objects.GameObjectType
+import com.projectswg.common.network.packets.SWGPacket
 import com.projectswg.common.network.packets.swg.zone.PlayMusicMessage
 import com.projectswg.common.network.packets.swg.zone.object_controller.Animation
+import com.projectswg.common.network.packets.swg.zone.object_controller.EntertainerFlourishType
 import com.projectswg.holocore.intents.gameplay.entertainment.dance.*
 import com.projectswg.holocore.intents.gameplay.player.experience.ExperienceIntent
 import com.projectswg.holocore.intents.support.global.chat.SystemMessageIntent
@@ -60,6 +62,12 @@ class EntertainmentService : Service() {
 	override fun terminate(): Boolean {
 		executorService.shutdownNow()
 		return super.terminate()
+	}
+
+	@IntentHandler
+	private fun handleStopDanceIntent(intent: StopDanceIntent) {
+		val player = intent.player
+		stopDancing(player)
 	}
 
 	@IntentHandler
@@ -106,14 +114,14 @@ class EntertainmentService : Service() {
 			SystemMessageIntent(player, "@performance:already_performing_self").broadcast()
 			return
 		}
-		
+
 		val instrument = getInstrument(performer)
-		
+
 		if (instrument == null) {
 			SystemMessageIntent(player, "@performance:music_no_instrument").broadcast()
 			return
 		}
-		
+
 		val instrumentId = instrument.template.replace("object/tangible/instrument/shared_", "").replace(".iff", "").replace("_", " ")
 		val performanceByName = performances().getMusicPerformanceBySongAndInstrument(songName, instrumentId)
 
@@ -121,20 +129,20 @@ class EntertainmentService : Service() {
 			SystemMessageIntent(player, "@performance:music_invalid_song").broadcast()
 			return
 		}
-		
+
 		if (!performer.hasCommand(performanceByName.requiredInstrument)) {
 			SystemMessageIntent(player, "@performance:music_lack_skill_instrument").broadcast()
 			return
 		}
-		
+
 		if (!performer.hasCommand(performanceByName.requiredSong)) {
 			SystemMessageIntent(player, "@performance:music_lack_skill_song_self").broadcast()
 			return
 		}
-		
+
 		startPlaying(player, performanceByName)
 	}
-	
+
 	@IntentHandler
 	private fun handleStopMusicIntent(intent: StopMusicIntent) {
 		val player = intent.player
@@ -148,12 +156,12 @@ class EntertainmentService : Service() {
 				return it
 			}
 		}
-		
+
 		val rightHandObject = performer.getSlottedObject("hold_r")
 		if (isInstrument(rightHandObject)) {
 			return rightHandObject
 		}
-		
+
 		return null
 	}
 
@@ -183,27 +191,25 @@ class EntertainmentService : Service() {
 
 		// If a performer disappears, the audience needs to be cleared
 		// They're also removed from the map of active performers.
-		if (isEntertainer(creature) && creature.isPerforming) {
+		if (creature.isPerforming) {
 			performerMap[creature.objectId]?.clearSpectators()
 			performerMap.remove(creature.objectId)
 		}
 	}
 
 	private fun handlePlayerZoneIn(creature: CreatureObject) {
-		if (isEntertainer(creature) && creature.posture == Posture.SKILL_ANIMATING) {
+		if (creature.isPerforming) {
 			val danceId = creature.animation.replace("dance_", "").toInt()	// TODO this doesn't cover if we're playing music
 			val performanceByDanceId = performances().getPerformanceByDanceId(danceId)
 			if (performanceByDanceId != null) {
-				scheduleExperienceTask(
-					creature, performanceByDanceId
-				)
+				schedulePerformanceLoop(creature, performanceByDanceId)
 			}
 		}
 	}
 
 	private fun handlePlayerLoggedOut(creature: CreatureObject) {
-		if (isEntertainer(creature) && creature.posture == Posture.SKILL_ANIMATING) {
-			cancelExperienceTask(creature)
+		if (creature.posture == Posture.SKILL_ANIMATING) {
+			cancelPerformanceLoop(creature)
 		}
 	}
 
@@ -214,18 +220,28 @@ class EntertainmentService : Service() {
 		if (performerObject.performanceCounter != 0) return
 		performerObject.performanceCounter = 1
 
-		// Send the flourish animation to the owner of the creature and owners of creatures observing
 		val flourishNumber = fi.flourishNumber
-		performerObject.sendObservers(Animation(performerObject.objectId, "skill_action_$flourishNumber"))
-		if (performerObject.performanceId > 0) {
+		if (isPlayingSong(performerObject)) {
 			val performance = performerMap[performerObject.objectId] ?: return
 			val performanceInfo = performance.performanceInfo
 			val flourishSound = performanceInfo.flourishes[flourishNumber - 1]
 			val flourishSoundMessage = PlayMusicMessage(performerObject.objectId, flourishSound, 1, false)
+			val entertainerFlourishType = EntertainerFlourishType(performerObject.objectId)
+			entertainerFlourishType.flourish = flourishNumber
 			performer.sendPacket(flourishSoundMessage)
-			performance.sendFlourishMusicMessage(flourishSoundMessage)
+			performer.sendPacket(entertainerFlourishType)
+			performance.sendPacket(flourishSoundMessage)
+			performance.sendPacket(entertainerFlourishType)
+		} else {
+			// In this case, we're dancing
+			performerObject.sendObservers(Animation(performerObject.objectId, "skill_action_$flourishNumber"))
 		}
 		SystemMessageIntent(performer, "@performance:flourish_perform").broadcast()
+		StandardLog.onPlayerEvent(this, performer, "performed flourish %d", flourishNumber)
+	}
+
+	private fun isPlayingSong(performerObject: CreatureObject): Boolean {
+		return performerObject.performanceId > 0
 	}
 
 	@IntentHandler
@@ -233,10 +249,6 @@ class EntertainmentService : Service() {
 		val target = wi.target
 		if (target is CreatureObject) {
 			val actor = wi.actor
-			if (!isEntertainer(target)) {
-				// We can't watch non-entertainers - do nothing
-				return
-			}
 			if (target.isPlayer) {
 				if (target.isPerforming) {
 					val performance = performerMap[target.objectId] ?: return
@@ -270,7 +282,7 @@ class EntertainmentService : Service() {
 			// They're watching a performer!
 			val performance = performerMap[performanceListenTarget]
 			if (performance == null) {
-				StandardLog.onPlayerError(this, movedPlayer, "was watching a performer (%d) that didn't exist", performanceListenTarget)
+				StandardLog.onPlayerError(this, movedPlayer, "was watching a performer (%d) that doesn't exist", performanceListenTarget)
 				return
 			}
 			val performer = performance.performer
@@ -290,23 +302,13 @@ class EntertainmentService : Service() {
 		}
 	}
 
-	/**
-	 * Checks if the `CreatureObject` is a Novice Entertainer.
-	 *
-	 * @param performer
-	 * @return true if `performer` is a Novice Entertainer and false if not
-	 */
-	private fun isEntertainer(performer: CreatureObject): Boolean {
-		return performer.hasSkill("social_entertainer_novice") // First entertainer skillbox
-	}
-
-	private fun scheduleExperienceTask(performer: CreatureObject, performanceInfo: PerformanceLoader.PerformanceInfo) {
+	private fun schedulePerformanceLoop(performer: CreatureObject, performanceInfo: PerformanceLoader.PerformanceInfo) {
 		val loopDuration = performanceInfo.loopDuration
-		StandardLog.onPlayerEvent(this, performer, "was scheduled to receive XP every %d seconds", loopDuration.toLong())
+		StandardLog.onPlayerEvent(this, performer, "entered performance loop with %s", performanceInfo.performanceName)
 		synchronized(performerMap) {
 			val performerId = performer.objectId
 			val future = executorService.scheduleAtFixedRate(
-				EntertainerExperience(performer),
+				PerformanceLoop(performer),
 				loopDuration.toLong(),
 				loopDuration.toLong(),
 				TimeUnit.SECONDS
@@ -322,7 +324,7 @@ class EntertainmentService : Service() {
 		}
 	}
 
-	private fun cancelExperienceTask(performer: CreatureObject) {
+	private fun cancelPerformanceLoop(performer: CreatureObject) {
 		synchronized(performerMap) {
 			val performance = performerMap[performer.objectId]
 			if (performance == null) {
@@ -330,7 +332,7 @@ class EntertainmentService : Service() {
 				return
 			}
 			performance.future.cancel(false)
-			StandardLog.onPlayerEvent(this, performer, "no longer receives XP every %d seconds", performance.performanceInfo.loopDuration.toInt())
+			StandardLog.onPlayerEvent(this, performer, "left performance loop")
 		}
 	}
 
@@ -347,7 +349,7 @@ class EntertainmentService : Service() {
 		dancer.performanceCounter = 0
 		dancer.isPerforming = true
 		dancer.posture = Posture.SKILL_ANIMATING
-		scheduleExperienceTask(dancer, performanceByName)
+		schedulePerformanceLoop(dancer, performanceByName)
 		SystemMessageIntent(player, "@performance:dance_start_self").broadcast()
 	}
 
@@ -359,7 +361,7 @@ class EntertainmentService : Service() {
 		musician.isPerforming = true
 		musician.posture = Posture.SKILL_ANIMATING
 		musician.performanceListenTarget = musician.objectId
-		scheduleExperienceTask(musician, performanceByName)
+		schedulePerformanceLoop(musician, performanceByName)
 		SystemMessageIntent(player, "@performance:music_start_self").broadcast()
 	}
 
@@ -371,13 +373,12 @@ class EntertainmentService : Service() {
 			musician.performanceCounter = 0
 			musician.animation = ""
 			musician.performanceId = 0
+			musician.performanceListenTarget = 0
 
 			// Non-entertainers don't receive XP and have no audience - ignore them
-			if (isEntertainer(musician)) {
-				cancelExperienceTask(musician)
-				val performance = performerMap.remove(musician.objectId)
-				performance?.clearSpectators()
-			}
+			cancelPerformanceLoop(musician)
+			val performance = performerMap.remove(musician.objectId)
+			performance?.clearSpectators()
 			SystemMessageIntent(player, "@performance:music_stop_self").broadcast()
 		} else {
 			SystemMessageIntent(player, "@performance:music_not_performing").broadcast()
@@ -393,11 +394,9 @@ class EntertainmentService : Service() {
 			dancer.animation = ""
 
 			// Non-entertainers don't receive XP and have no audience - ignore them
-			if (isEntertainer(dancer)) {
-				cancelExperienceTask(dancer)
-				val performance = performerMap.remove(dancer.objectId)
-				performance?.clearSpectators()
-			}
+			cancelPerformanceLoop(dancer)
+			val performance = performerMap.remove(dancer.objectId)
+			performance?.clearSpectators()
 			SystemMessageIntent(player, "@performance:dance_stop_self").broadcast()
 		} else {
 			SystemMessageIntent(player, "@performance:dance_not_performing").broadcast()
@@ -439,9 +438,9 @@ class EntertainmentService : Service() {
 		fun removeSpectator(spectator: CreatureObject): Boolean {
 			return audience.remove(spectator)
 		}
-		
-		fun sendFlourishMusicMessage(musicMessage: PlayMusicMessage) {
-			audience.forEach { it.sendSelf(musicMessage) }
+
+		fun sendPacket(packet: SWGPacket) {
+			audience.forEach { it.sendSelf(packet) }
 		}
 
 		fun clearSpectators() {
@@ -450,7 +449,7 @@ class EntertainmentService : Service() {
 		}
 	}
 
-	private inner class EntertainerExperience(private val performer: CreatureObject) : Runnable {
+	private inner class PerformanceLoop(private val performer: CreatureObject) : Runnable {
 		override fun run() {
 			val performance = performerMap[performer.objectId]
 			if (performance == null) {
@@ -462,14 +461,12 @@ class EntertainmentService : Service() {
 			val performanceCounter = performer.performanceCounter
 			val xpGained = performanceCounter * flourishXpMod
 			if (xpGained > 0) {
-				if (isEntertainer(performer)) {
-					val xpType = xpType(performanceInfo.type)
-					ExperienceIntent(performer, performer, xpType, xpGained, true).broadcast()
-				}
+				val xpType = xpType(performanceInfo.type)
+				ExperienceIntent(performer, performer, xpType, xpGained, true).broadcast()
 				performer.performanceCounter = performanceCounter - 1
 			}
 		}
-		
+
 		private fun xpType(type: CRC) = if (type == CRC("music")) "music" else "dance"
 	}
 

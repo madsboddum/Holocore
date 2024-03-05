@@ -1,5 +1,5 @@
 /***********************************************************************************
- * Copyright (c) 2018 /// Project SWG /// www.projectswg.com                       *
+ * Copyright (c) 2024 /// Project SWG /// www.projectswg.com                       *
  *                                                                                 *
  * ProjectSWG is the first NGE emulator for Star Wars Galaxies founded on          *
  * July 7th, 2011 after SOE announced the official shutdown of Star Wars Galaxies. *
@@ -38,7 +38,7 @@ public class ChangeDanceCallback extends StartDanceCallback {
 	public void execute(@NotNull Player player, SWGObject target, @NotNull String args) {
 		CreatureObject actor = player.getCreatureObject();
 		
-		if(actor.isPerforming()) {	// They need to be dancing in the first place!
+		if(actor.isPerforming() && actor.getPerformanceId() == 0) {	// They need to be dancing in the first place!
 			super.handleCommand(player, target, args, true);
 		} else {
 			new SystemMessageIntent(player, "@performance:dance_must_be_performing_self").broadcast();

@@ -28,7 +28,7 @@ package com.projectswg.holocore.resources.support.global.commands.callbacks;
 
 import com.projectswg.common.data.encodables.tangible.Posture;
 import com.projectswg.holocore.intents.gameplay.crafting.survey.StopSamplingIntent;
-import com.projectswg.holocore.intents.gameplay.entertainment.dance.DanceIntent;
+import com.projectswg.holocore.intents.gameplay.entertainment.dance.StopDanceIntent;
 import com.projectswg.holocore.intents.gameplay.entertainment.dance.StopMusicIntent;
 import com.projectswg.holocore.resources.support.global.commands.ICmdCallback;
 import com.projectswg.holocore.resources.support.global.commands.Locomotion;
@@ -57,7 +57,7 @@ public class StandCmdCallback implements ICmdCallback {
 			if (creature.getPerformanceId() > 0) {
 				new StopMusicIntent(player).broadcast();
 			} else {
-				new DanceIntent(player).broadcast();
+				new StopDanceIntent(player).broadcast();
 			}
 		} else {
 			creature.clearStatesBitmask(CreatureState.SITTING_ON_CHAIR);

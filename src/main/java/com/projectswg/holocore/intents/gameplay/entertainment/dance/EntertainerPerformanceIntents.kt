@@ -47,3 +47,9 @@ data class StopMusicIntent(val player: Player): Intent() {
 		@JvmStatic inline fun broadcast(player: Player) = StopMusicIntent(player).broadcast()
 	}
 }
+
+data class StopDanceIntent(val player: Player): Intent() {
+	companion object {
+		@JvmStatic inline fun broadcast(player: Player) = StopDanceIntent(player).broadcast()
+	}
+}
