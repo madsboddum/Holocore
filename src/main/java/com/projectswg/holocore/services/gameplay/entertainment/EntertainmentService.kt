@@ -30,6 +30,7 @@ import com.projectswg.common.data.CRC
 import com.projectswg.common.data.encodables.oob.ProsePackage
 import com.projectswg.common.data.encodables.oob.StringId
 import com.projectswg.common.data.encodables.tangible.Posture
+import com.projectswg.common.data.location.Location
 import com.projectswg.common.data.objects.GameObjectType
 import com.projectswg.common.network.packets.SWGPacket
 import com.projectswg.common.network.packets.swg.zone.PlayMusicMessage
@@ -53,10 +54,9 @@ import me.joshlarson.jlcommon.control.Service
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
-import java.util.function.Consumer
 
 class EntertainmentService : Service() {
-	private val performerMap = mutableMapOf<Long, Performance>()
+	private val performerMap = mutableMapOf<CreatureObject, Performance>()
 	private val executorService = Executors.newSingleThreadScheduledExecutor()
 
 	override fun terminate(): Boolean {
@@ -66,7 +66,7 @@ class EntertainmentService : Service() {
 
 	@IntentHandler
 	private fun handleStopDanceIntent(intent: StopDanceIntent) {
-		val player = intent.player
+		val player = intent.performer
 		stopDancing(player)
 	}
 
@@ -106,7 +106,7 @@ class EntertainmentService : Service() {
 
 	@IntentHandler
 	private fun handleStartMusicIntent(intent: StartMusicIntent) {
-		val player = intent.player
+		val player = intent.performer
 		val performer = player.creatureObject
 		val songName = intent.songName
 
@@ -145,7 +145,7 @@ class EntertainmentService : Service() {
 
 	@IntentHandler
 	private fun handleStopMusicIntent(intent: StopMusicIntent) {
-		val player = intent.player
+		val player = intent.performer
 		stopPlaying(player)
 	}
 
@@ -180,29 +180,34 @@ class EntertainmentService : Service() {
 	}
 
 	private fun handlePlayerDisappear(player: Player) {
-		val creature = player.creatureObject
-		// If a spectator disappears, they need to stop watching and be removed from the audience
-		val performerId = creature.performanceListenTarget
-		val performance = performerMap[performerId]
-		val spectating = performance?.removeSpectator(creature) == true
-		if (performerId != 0L && spectating) {
-			stopWatching(player, false)
-		}
+		stopWatchingPerformances(player)
 
 		// If a performer disappears, the audience needs to be cleared
 		// They're also removed from the map of active performers.
+		val creature = player.creatureObject
 		if (creature.isPerforming) {
-			performerMap[creature.objectId]?.clearSpectators()
-			performerMap.remove(creature.objectId)
+			stopTrackingPerformance(creature)
 		}
+	}
+
+	private fun stopTrackingPerformance(creature: CreatureObject) {
+		performerMap[creature]?.clearSpectators()
+	}
+
+	private fun stopWatchingPerformances(player: Player) {
+		performerMap.values.forEach { it.removeSpectator(player) }
 	}
 
 	private fun handlePlayerZoneIn(creature: CreatureObject) {
 		if (creature.isPerforming) {
-			val danceId = creature.animation.replace("dance_", "").toInt()	// TODO this doesn't cover if we're playing music
-			val performanceByDanceId = performances().getPerformanceByDanceId(danceId)
-			if (performanceByDanceId != null) {
-				schedulePerformanceLoop(creature, performanceByDanceId)
+			if (isPlayingSong(creature)) {
+				// TODO we need to figure out which song they're playing by information we've stored in the CreatureObject somewhere
+			} else {
+				val danceId = creature.animation.replace("dance_", "").toInt()
+				val performanceByDanceId = performances().getPerformanceByDanceId(danceId)
+				if (performanceByDanceId != null) {
+					schedulePerformanceLoop(creature, performanceByDanceId)
+				}
 			}
 		}
 	}
@@ -222,7 +227,7 @@ class EntertainmentService : Service() {
 
 		val flourishNumber = fi.flourishNumber
 		if (isPlayingSong(performerObject)) {
-			val performance = performerMap[performerObject.objectId] ?: return
+			val performance = performerMap[performerObject] ?: return
 			val performanceInfo = performance.performanceInfo
 			val flourishSound = performanceInfo.flourishes[flourishNumber - 1]
 			val flourishSoundMessage = PlayMusicMessage(performerObject.objectId, flourishSound, 1, false)
@@ -237,7 +242,7 @@ class EntertainmentService : Service() {
 			performerObject.sendObservers(Animation(performerObject.objectId, "skill_action_$flourishNumber"))
 		}
 		SystemMessageIntent(performer, "@performance:flourish_perform").broadcast()
-		StandardLog.onPlayerEvent(this, performer, "performed flourish %d", flourishNumber)
+		StandardLog.onPlayerTrace(this, performer, "performed flourish %d", flourishNumber)
 	}
 
 	private fun isPlayingSong(performerObject: CreatureObject): Boolean {
@@ -251,15 +256,11 @@ class EntertainmentService : Service() {
 			val actor = wi.actor
 			if (target.isPlayer) {
 				if (target.isPerforming) {
-					val performance = performerMap[target.objectId] ?: return
+					val performance = performerMap[target] ?: return
 					if (wi.isStartWatch) {
-						if (performance.addSpectator(actor.creatureObject)) {
-							startWatching(actor, target)
-						}
+						performance.addSpectator(actor)
 					} else {
-						if (performance.removeSpectator(actor.creatureObject)) {
-							stopWatching(actor, true)
-						}
+						performance.removeSpectator(actor)
 					}
 				} else {
 					// While this is a valid target for watching, the target is currently not performing.
@@ -273,40 +274,43 @@ class EntertainmentService : Service() {
 			}
 		}
 	}
+	
+	@IntentHandler
+	private fun handleStartListeningIntent(intent: StartListeningIntent) {
+		val performance = performerMap[intent.performer.creatureObject] ?: return
+		performance.addSpectator(intent.player)
+	}
+	
+	@IntentHandler
+	private fun handleStopListeningIntent(intent: StopListeningIntent) {
+		val performance = performerMap[intent.player.creatureObject] ?: return	// TODO this won't work, because the player executing the command is not the performer
+		performance.addSpectator(intent.player)
+	}
 
 	@IntentHandler
 	private fun handlePlayerTransformedIntent(pti: PlayerTransformedIntent) {
-		val movedPlayer = pti.player
-		val performanceListenTarget = movedPlayer.performanceListenTarget
-		if (performanceListenTarget != 0L) {
-			// They're watching a performer!
-			val performance = performerMap[performanceListenTarget]
-			if (performance == null) {
-				StandardLog.onPlayerError(this, movedPlayer, "was watching a performer (%d) that doesn't exist", performanceListenTarget)
-				return
-			}
-			val performer = performance.performer
-			val performerLocation = performer.worldLocation
-			val movedPlayerLocation = pti.player.worldLocation // Ziggy: The newLocation in PlayerTransformedIntent isn't the world location, which is what we need here
-			if (!movedPlayerLocation.isWithinDistance(performerLocation, WATCH_RADIUS)) {
-				// They moved out of the defined range! Make them stop watching
-				if (performance.removeSpectator(movedPlayer)) {
-					val player = movedPlayer.owner
-					if (player != null) {
-						stopWatching(player, true)
-					}
-				} else {
-					StandardLog.onPlayerError(this, movedPlayer, "ran out of range of %s, but couldn't stop watching because they weren't watching in the first place", performer)
-				}
-			}
+		val creatureObject = pti.player
+		val player = creatureObject.owner ?: return
+		val newLocation = creatureObject.worldLocation
+		val performancesToStopSpectating = performerMap.values
+			.filter { it.isSpectator(creatureObject) }
+			.filter { isTooFarAway(it.performer, newLocation) }
+		
+		performancesToStopSpectating.forEach { performance ->
+			performance.removeSpectator(player)
 		}
+	}
+
+	private fun isTooFarAway(performer: CreatureObject, movedPlayerLocation: Location): Boolean {
+		val performerLocation = performer.worldLocation
+		val tooFarAway = !movedPlayerLocation.isWithinDistance(performerLocation, WATCH_RADIUS)
+		return tooFarAway
 	}
 
 	private fun schedulePerformanceLoop(performer: CreatureObject, performanceInfo: PerformanceLoader.PerformanceInfo) {
 		val loopDuration = performanceInfo.loopDuration
-		StandardLog.onPlayerEvent(this, performer, "entered performance loop with %s", performanceInfo.performanceName)
+		StandardLog.onPlayerEvent(this, performer, "started performing '%s'", performanceInfo.performanceName)
 		synchronized(performerMap) {
-			val performerId = performer.objectId
 			val future = executorService.scheduleAtFixedRate(
 				PerformanceLoop(performer),
 				loopDuration.toLong(),
@@ -315,24 +319,24 @@ class EntertainmentService : Service() {
 			)
 
 			// If they went LD but came back before disappearing
-			val performance = performerMap[performerId]
+			val performance = performerMap[performer]
 			if (performance != null) {
-				performance.future = future
+				performance.performanceLoop = future
 			} else {
-				performerMap.put(performer.objectId, Performance(performer, future, performanceInfo))
+				performerMap.put(performer, Performance(performer, future, performanceInfo))
 			}
 		}
 	}
 
 	private fun cancelPerformanceLoop(performer: CreatureObject) {
 		synchronized(performerMap) {
-			val performance = performerMap[performer.objectId]
+			val performance = performerMap[performer]
 			if (performance == null) {
 				StandardLog.onPlayerError(this, performer, "wasn't found in performerMap")
 				return
 			}
-			performance.future.cancel(false)
-			StandardLog.onPlayerEvent(this, performer, "left performance loop")
+			performance.performanceLoop.cancel(false)
+			StandardLog.onPlayerEvent(this, performer, "stopped performing '%s'", performance.performanceInfo.performanceName)
 		}
 	}
 
@@ -375,9 +379,8 @@ class EntertainmentService : Service() {
 			musician.performanceId = 0
 			musician.performanceListenTarget = 0
 
-			// Non-entertainers don't receive XP and have no audience - ignore them
 			cancelPerformanceLoop(musician)
-			val performance = performerMap.remove(musician.objectId)
+			val performance = performerMap.remove(musician)
 			performance?.clearSpectators()
 			SystemMessageIntent(player, "@performance:music_stop_self").broadcast()
 		} else {
@@ -393,9 +396,8 @@ class EntertainmentService : Service() {
 			dancer.performanceCounter = 0
 			dancer.animation = ""
 
-			// Non-entertainers don't receive XP and have no audience - ignore them
 			cancelPerformanceLoop(dancer)
-			val performance = performerMap.remove(dancer.objectId)
+			val performance = performerMap[dancer]
 			performance?.clearSpectators()
 			SystemMessageIntent(player, "@performance:dance_stop_self").broadcast()
 		} else {
@@ -404,7 +406,7 @@ class EntertainmentService : Service() {
 	}
 
 	private fun changeDance(dancer: CreatureObject, newPerformanceName: String) {
-		val performance = performerMap[dancer.objectId]
+		val performance = performerMap[dancer]
 		if (performance != null) {
 			val performanceByName = performances().getDancePerformanceByName(newPerformanceName)
 			if (performanceByName != null) {
@@ -418,40 +420,74 @@ class EntertainmentService : Service() {
 		val actor = player.creatureObject
 		actor.moodAnimation = "entertained"
 		SystemMessageIntent(player, ProsePackage(StringId("performance", "dance_watch_self"), "TT", creature.objectName)).broadcast()
-		actor.performanceListenTarget = creature.objectId
+		StandardLog.onPlayerEvent(this, player, "started watching %s", creature)
 	}
 
-	private fun stopWatching(player: Player, displaySystemMessage: Boolean) {
+	private fun stopWatching(player: Player) {
 		val actor = player.creatureObject
 		actor.moodAnimation = "neutral"
-		if (displaySystemMessage) SystemMessageIntent(player, "@performance:dance_watch_stop_self").broadcast()
-		actor.performanceListenTarget = 0
+		SystemMessageIntent(player, "@performance:dance_watch_stop_self").broadcast()
 	}
 
-	private inner class Performance(val performer: CreatureObject, var future: Future<*>, var performanceInfo: PerformanceLoader.PerformanceInfo) {
+	private fun startListening(player: Player, creature: CreatureObject) {
+		val actor = player.creatureObject
+		actor.moodAnimation = "entertained"
+		actor.performanceListenTarget = creature.objectId
+		SystemMessageIntent(player, ProsePackage(StringId("performance", "music_listen_self"), "TT", creature.objectName)).broadcast()
+		StandardLog.onPlayerEvent(this, player, "started listening to %s", creature)
+	}
+
+	private fun stopListening(player: Player) {
+		val actor = player.creatureObject
+		actor.moodAnimation = "neutral"
+		actor.performanceListenTarget = 0
+		SystemMessageIntent(player, "@performance:music_listen_stop_self").broadcast()
+	}
+
+	private inner class Performance(val performer: CreatureObject, var performanceLoop: Future<*>, var performanceInfo: PerformanceLoader.PerformanceInfo) {
 		private val audience = mutableSetOf<CreatureObject>()
 
-		fun addSpectator(spectator: CreatureObject): Boolean {
-			return audience.add(spectator)
+		fun addSpectator(spectator: Player) {
+			val newSpectator = audience.add(spectator.creatureObject)
+			
+			if (newSpectator) {
+				if (isPlayingSong(performer)) {
+					startListening(spectator, performer)
+				} else {
+					startWatching(spectator, performer)
+				}
+			}
 		}
 
-		fun removeSpectator(spectator: CreatureObject): Boolean {
-			return audience.remove(spectator)
+		fun removeSpectator(spectator: Player) {
+			val spectating = audience.remove(spectator.creatureObject)
+			
+			if (spectating) {
+				if (isPlayingSong(performer)) {
+					stopListening(spectator)
+				} else {
+					stopWatching(spectator)
+				}
+			}
 		}
+		
+		fun isSpectator(spectator: CreatureObject) = audience.contains(spectator)
 
 		fun sendPacket(packet: SWGPacket) {
 			audience.forEach { it.sendSelf(packet) }
 		}
 
 		fun clearSpectators() {
-			audience.mapNotNull { it.owner }.forEach(Consumer { player -> stopWatching(player, true) })
-			audience.clear()
+			performerMap.remove(performer)
+			audience.mapNotNull { it.owner }.forEach{ player ->
+				removeSpectator(player)
+			}
 		}
 	}
 
 	private inner class PerformanceLoop(private val performer: CreatureObject) : Runnable {
 		override fun run() {
-			val performance = performerMap[performer.objectId]
+			val performance = performerMap[performer]
 			if (performance == null) {
 				StandardLog.onPlayerError(this, performer, "is not in performerMap")
 				return

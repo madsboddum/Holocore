@@ -40,6 +40,7 @@ import com.projectswg.holocore.resources.support.global.commands.callbacks.comba
 import com.projectswg.holocore.resources.support.global.commands.callbacks.combat.CmdDuel;
 import com.projectswg.holocore.resources.support.global.commands.callbacks.combat.CmdEndDuel;
 import com.projectswg.holocore.resources.support.global.commands.callbacks.conversation.*;
+import com.projectswg.holocore.resources.support.global.commands.callbacks.entertainer.*;
 import com.projectswg.holocore.resources.support.global.commands.callbacks.flags.*;
 import com.projectswg.holocore.resources.support.global.commands.callbacks.generic.*;
 import com.projectswg.holocore.resources.support.global.commands.callbacks.group.*;
@@ -145,7 +146,8 @@ public class CommandExecutionService extends Service {
 		registerScriptCallback("cmdFlourish", FlourishCmdCallback::new);
 		registerScriptCallback("cmdWatch", CmdWatch::new);
 		registerScriptCallback("cmdStopWatching", CmdStopWatching::new);
-		
+		registerScriptCallback("cmdListen", CmdListen::new);
+		registerScriptCallback("cmdStopListening", CmdStopListening::new);
 		registerScriptCallback("cmdStartMusic", StartMusicCallback::new);
 	}
 	

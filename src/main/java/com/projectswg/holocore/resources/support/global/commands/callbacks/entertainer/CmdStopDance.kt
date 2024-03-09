@@ -24,45 +24,15 @@
  * You should have received a copy of the GNU Affero General Public License        *
  * along with Holocore.  If not, see <http://www.gnu.org/licenses/>.               *
  ***********************************************************************************/
-@file:Suppress("NOTHING_TO_INLINE")
-package com.projectswg.holocore.intents.gameplay.entertainment.dance
+package com.projectswg.holocore.resources.support.global.commands.callbacks.entertainer
 
+import com.projectswg.holocore.intents.gameplay.entertainment.dance.StopDanceIntent
+import com.projectswg.holocore.resources.support.global.commands.ICmdCallback
 import com.projectswg.holocore.resources.support.global.player.Player
-import me.joshlarson.jlcommon.control.Intent
+import com.projectswg.holocore.resources.support.objects.swg.SWGObject
 
-data class StartMusicIntent(val performer: Player, val songName: String): Intent() {
-	companion object {
-		@JvmStatic inline fun broadcast(performer: Player, songName: String) = StartMusicIntent(performer, songName).broadcast()
-	}
-}
-
-data class ChangeMusicIntent(val performer: Player, val songName: String): Intent() {
-	companion object {
-		@JvmStatic inline fun broadcast(performer: Player, songName: String) = ChangeMusicIntent(performer, songName).broadcast()
-	}
-}
-
-data class StopMusicIntent(val performer: Player): Intent() {
-	companion object {
-		@JvmStatic inline fun broadcast(player: Player) = StopMusicIntent(player).broadcast()
-	}
-}
-
-data class StopDanceIntent(val performer: Player): Intent() {
-	companion object {
-		@JvmStatic inline fun broadcast(performer: Player) = StopDanceIntent(performer).broadcast()
-	}
-}
-
-data class StartListeningIntent(val player: Player, val performer: Player): Intent() {
-	companion object {
-		@JvmStatic inline fun broadcast(player: Player, performer: Player) = StartListeningIntent(player, performer).broadcast()
-	}
-}
-
-
-data class StopListeningIntent(val player: Player): Intent() {
-	companion object {
-		@JvmStatic inline fun broadcast(player: Player) = StopListeningIntent(player).broadcast()
+class CmdStopDance : ICmdCallback {
+	override fun execute(player: Player, target: SWGObject?, args: String) {
+		StopDanceIntent(player).broadcast()
 	}
 }

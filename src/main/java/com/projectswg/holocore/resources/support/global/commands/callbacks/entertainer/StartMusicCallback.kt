@@ -24,15 +24,23 @@
  * You should have received a copy of the GNU Affero General Public License        *
  * along with Holocore.  If not, see <http://www.gnu.org/licenses/>.               *
  ***********************************************************************************/
-package com.projectswg.holocore.resources.support.global.commands.callbacks.generic
+package com.projectswg.holocore.resources.support.global.commands.callbacks.entertainer
 
-import com.projectswg.holocore.intents.gameplay.entertainment.dance.StopDanceIntent
-import com.projectswg.holocore.resources.support.global.commands.ICmdCallback
+import com.projectswg.holocore.intents.gameplay.entertainment.dance.ChangeMusicIntent
+import com.projectswg.holocore.intents.gameplay.entertainment.dance.StartMusicIntent
+import com.projectswg.holocore.intents.gameplay.entertainment.dance.StopMusicIntent
 import com.projectswg.holocore.resources.support.global.player.Player
-import com.projectswg.holocore.resources.support.objects.swg.SWGObject
 
-class CmdStopDance : ICmdCallback {
-	override fun execute(player: Player, target: SWGObject?, args: String) {
-		StopDanceIntent(player).broadcast()
+class StartMusicCallback : StartPerformanceCallback("startMusic+", ListBoxText("@performance:select_song", "@performance:available_songs")) {
+	override fun onSelectPerformance(player: Player, selection: String) {
+		StartMusicIntent(player, selection).broadcast()
+	}
+
+	override fun onStopPerformance(player: Player) {
+		StopMusicIntent(player).broadcast()
+	}
+
+	override fun onChangePerformance(player: Player, selection: String) {
+		ChangeMusicIntent(player, selection).broadcast()
 	}
 }

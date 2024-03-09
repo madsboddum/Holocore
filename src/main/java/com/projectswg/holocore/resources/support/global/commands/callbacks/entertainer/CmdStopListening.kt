@@ -1,5 +1,5 @@
 /***********************************************************************************
- * Copyright (c) 2023 /// Project SWG /// www.projectswg.com                       *
+ * Copyright (c) 2024 /// Project SWG /// www.projectswg.com                       *
  *                                                                                 *
  * ProjectSWG is the first NGE emulator for Star Wars Galaxies founded on          *
  * July 7th, 2011 after SOE announced the official shutdown of Star Wars Galaxies. *
@@ -24,28 +24,24 @@
  * You should have received a copy of the GNU Affero General Public License        *
  * along with Holocore.  If not, see <http://www.gnu.org/licenses/>.               *
  ***********************************************************************************/
-package com.projectswg.holocore.resources.support.global.commands.callbacks.generic;
 
-import com.projectswg.holocore.intents.gameplay.entertainment.dance.WatchIntent;
-import com.projectswg.holocore.resources.support.global.commands.ICmdCallback;
-import com.projectswg.holocore.resources.support.global.player.Player;
-import com.projectswg.holocore.resources.support.objects.swg.SWGObject;
-import org.jetbrains.annotations.NotNull;
+package com.projectswg.holocore.resources.support.global.commands.callbacks.entertainer
 
-public final class CmdStopWatching implements ICmdCallback {
-	
-	@Override
-	public void execute(@NotNull Player player, SWGObject target, @NotNull String args) {
+import com.projectswg.holocore.intents.gameplay.entertainment.dance.StopListeningIntent
+import com.projectswg.holocore.resources.support.global.commands.ICmdCallback
+import com.projectswg.holocore.resources.support.global.player.Player
+import com.projectswg.holocore.resources.support.objects.swg.SWGObject
+
+class CmdStopListening : ICmdCallback {
+	override fun execute(player: Player, target: SWGObject?, args: String) {
 		if (target == null) {
-			return;
+			return
 		}
-		
-		if (player.getCreatureObject() == target) {
-			// You can't watch yourself, silly!
-			return;
+
+		if (player.creatureObject === target) {
+			return
 		}
-		
-		new WatchIntent(player, target, false).broadcast();
+
+		StopListeningIntent(player).broadcast()
 	}
-	
 }
