@@ -172,10 +172,10 @@ class EntertainmentService : Service() {
 		val player = pei.player
 		val creature = player.creatureObject ?: return
 		when (pei.event) {
-			PlayerEvent.PE_LOGGED_OUT -> handlePlayerLoggedOut(creature)
+			PlayerEvent.PE_LOGGED_OUT     -> handlePlayerLoggedOut(creature)
 			PlayerEvent.PE_ZONE_IN_SERVER -> handlePlayerZoneIn(creature)
-			PlayerEvent.PE_DISAPPEAR -> handlePlayerDisappear(player)
-			else -> {}
+			PlayerEvent.PE_DISAPPEAR      -> handlePlayerDisappear(player)
+			else                          -> {}
 		}
 	}
 
@@ -274,17 +274,17 @@ class EntertainmentService : Service() {
 			}
 		}
 	}
-	
+
 	@IntentHandler
 	private fun handleStartListeningIntent(intent: StartListeningIntent) {
 		val performance = performerMap[intent.performer.creatureObject] ?: return
 		performance.addSpectator(intent.player)
 	}
-	
+
 	@IntentHandler
 	private fun handleStopListeningIntent(intent: StopListeningIntent) {
-		val performance = performerMap[intent.player.creatureObject] ?: return	// TODO this won't work, because the player executing the command is not the performer
-		performance.addSpectator(intent.player)
+		val performance = performerMap[intent.player.creatureObject] ?: return    // TODO this won't work, because the player executing the command is not the performer
+		performance.removeSpectator(intent.player)
 	}
 
 	@IntentHandler
@@ -312,10 +312,7 @@ class EntertainmentService : Service() {
 		StandardLog.onPlayerEvent(this, performer, "started performing '%s'", performanceInfo.performanceName)
 		synchronized(performerMap) {
 			val future = executorService.scheduleAtFixedRate(
-				PerformanceLoop(performer),
-				loopDuration.toLong(),
-				loopDuration.toLong(),
-				TimeUnit.SECONDS
+				PerformanceLoop(performer), loopDuration.toLong(), loopDuration.toLong(), TimeUnit.SECONDS
 			)
 
 			// If they went LD but came back before disappearing
@@ -359,7 +356,7 @@ class EntertainmentService : Service() {
 
 	private fun startPlaying(player: Player, performanceByName: PerformanceLoader.PerformanceInfo) {
 		val musician = player.creatureObject
-		musician.animation = "music_3"	// TODO there's a lookup-table for this: serverdata/entertainment/instrument.sdb
+		musician.animation = "music_3"    // TODO there's a lookup-table for this: serverdata/entertainment/instrument.sdb
 		musician.performanceId = performanceByName.index
 		musician.performanceCounter = 0
 		musician.isPerforming = true
@@ -449,7 +446,7 @@ class EntertainmentService : Service() {
 
 		fun addSpectator(spectator: Player) {
 			val newSpectator = audience.add(spectator.creatureObject)
-			
+
 			if (newSpectator) {
 				if (isPlayingSong(performer)) {
 					startListening(spectator, performer)
@@ -461,7 +458,7 @@ class EntertainmentService : Service() {
 
 		fun removeSpectator(spectator: Player) {
 			val spectating = audience.remove(spectator.creatureObject)
-			
+
 			if (spectating) {
 				if (isPlayingSong(performer)) {
 					stopListening(spectator)
@@ -470,7 +467,7 @@ class EntertainmentService : Service() {
 				}
 			}
 		}
-		
+
 		fun isSpectator(spectator: CreatureObject) = audience.contains(spectator)
 
 		fun sendPacket(packet: SWGPacket) {
@@ -479,7 +476,7 @@ class EntertainmentService : Service() {
 
 		fun clearSpectators() {
 			performerMap.remove(performer)
-			audience.mapNotNull { it.owner }.forEach{ player ->
+			audience.mapNotNull { it.owner }.forEach { player ->
 				removeSpectator(player)
 			}
 		}
