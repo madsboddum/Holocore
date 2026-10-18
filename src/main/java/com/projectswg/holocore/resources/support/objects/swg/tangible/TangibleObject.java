@@ -77,6 +77,7 @@ public class TangibleObject extends SWGObject {
 	
 	private int requiredCombatLevel;
 	private ArmorCategory armorCategory;
+	private ArmorLevel armorLevel;
 	private Protection protection;
 	private Faction requiredFaction;
 	private LightsaberPowerCrystalQuality lightsaberPowerCrystalQuality;
@@ -432,6 +433,14 @@ public class TangibleObject extends SWGObject {
 		this.armorCategory = armorCategory;
 	}
 	
+	public ArmorLevel getArmorLevel() {
+		return armorLevel;
+	}
+
+	public void setArmorLevel(ArmorLevel armorLevel) {
+		this.armorLevel = armorLevel;
+	}
+
 	public Protection getProtection() {
 		return protection;
 	}
@@ -524,6 +533,10 @@ public class TangibleObject extends SWGObject {
 			attributeList.putNumber("cat_armor_special_protection.elemental_cold", protection.getCold());
 			attributeList.putNumber("cat_armor_special_protection.elemental_acid", protection.getAcid());
 			attributeList.putNumber("cat_armor_special_protection.elemental_electricity", protection.getElectricity());
+
+			if (armorCategory != null && armorLevel != null) {
+				displayArmorHindrance(attributeList, viewer);
+			}
 		}
 		
 		Set<Race> speciesRestrictions = buildSpeciesRestrictions();
@@ -539,6 +552,26 @@ public class TangibleObject extends SWGObject {
 		return attributeList;
 	}
 	
+	private void displayArmorHindrance(AttributeList attributeList, CreatureObject viewer) {
+		// Kinetic and energy shift by the same amount in opposite directions, so their mean is the unshifted protection
+		int generalProtection = (protection.getKinetic() + protection.getEnergy()) / 2;
+		// Gloves and boots have no protection and so show no hindrance
+		if (generalProtection <= 0)
+			return;
+
+		Hindrance base = ArmorHindrance.INSTANCE.getBase(armorCategory, armorLevel, generalProtection);
+		Hindrance yours = ArmorHindrance.INSTANCE.getMitigated(armorCategory, base, viewer.getCommands());
+		attributeList.putText("cat_armor_penalty.armor_penalty_move", formatHindrance(base.getMovement(), yours.getMovement()));
+		attributeList.putText("cat_armor_penalty.armor_penalty_accuracy", formatHindrance(base.getAccuracy(), yours.getAccuracy()));
+		attributeList.putText("cat_armor_penalty.armor_penalty_attack", formatHindrance(base.getRateOfFire(), yours.getRateOfFire()));
+	}
+
+	// The \>165 tab stop lines "Yours" up under its column header; pcontrast2 highlights a penalty that remains, pcontrast1 one that doesn't
+	private String formatHindrance(double base, double yours) {
+		String color = yours > 0 ? "\\#pcontrast2 " : "\\#pcontrast1 ";
+		return String.format(Locale.US, "-%.1f%%\\>165%s-%.1f%%\\#.", base, color, yours);
+	}
+
 	private String getBioLinkAttributeValue() {
 		Long bioLinkedTo = getBioLinkedTo();
 
@@ -683,6 +716,9 @@ public class TangibleObject extends SWGObject {
 		if (armorCategory != null) {
 			data.putString("armorCategory", armorCategory.getId());
 		}
+		if (armorLevel != null) {
+			data.putString("armorLevel", armorLevel.getId());
+		}
 		if (protection != null) {
 			data.putDocument("protection", protection);
 		}
@@ -720,6 +756,7 @@ public class TangibleObject extends SWGObject {
 		requiredCombatLevel = data.getInteger("requiredCombatLevel", 0);
 		skillMods = data.getMap("skillMods", String.class, Integer.class);
 		armorCategory = ArmorCategory.Companion.getById(data.getString("armorCategory"));
+		armorLevel = ArmorLevel.Companion.getById(data.getString("armorLevel"));
 		if (data.containsKey("protection")) {
 			MongoData protectionMongoData = data.getDocument("protection");
 			protection = new Protection(0, 0, 0, 0, 0, 0);

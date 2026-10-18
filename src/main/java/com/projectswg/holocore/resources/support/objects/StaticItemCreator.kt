@@ -33,6 +33,7 @@ import com.projectswg.holocore.resources.support.data.server_info.loader.StaticI
 import com.projectswg.holocore.resources.support.objects.swg.SWGObject
 import com.projectswg.holocore.resources.support.objects.swg.ServerAttribute
 import com.projectswg.holocore.resources.support.objects.swg.tangible.ArmorCategory
+import com.projectswg.holocore.resources.support.objects.swg.tangible.ArmorLevel
 import com.projectswg.holocore.resources.support.objects.swg.tangible.LightsaberPowerCrystalQuality
 import com.projectswg.holocore.resources.support.objects.swg.tangible.Protection
 import com.projectswg.holocore.resources.support.objects.swg.tangible.TangibleObject
@@ -88,6 +89,7 @@ object StaticItemCreator {
 			}
 		}
 		obj.armorCategory = info.armorCategory
+		obj.armorLevel = ArmorLevel.getById(info.armorLevel)
 		obj.isBioLinkRequired = info.isBioLink
 
 		val protection = Protection(
